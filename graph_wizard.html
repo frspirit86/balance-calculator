@@ -33,11 +33,17 @@
   .edit-cancel{margin-left:10px;padding:4px 11px;background:transparent;border:1px solid var(--bd);border-radius:7px;color:var(--tx3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
   .edit-cancel:hover{border-color:var(--bdh);color:var(--tx2)}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
-  .chip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;max-height:340px;overflow:auto}
+  .chip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px;max-height:430px;overflow:auto;padding:2px}
   .opt{padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--tx);transition:all .12s;text-align:left}
   .opt:hover{border-color:var(--ac);background:var(--acbg)}
   .opt.big{padding:14px 18px;font-size:15px}
-  .opt .ostat{display:block;font-size:10px;color:var(--tx3);font-weight:500;margin-top:3px;font-variant-numeric:tabular-nums}
+  .opt.char{padding:14px 16px}
+  .char-name{display:block;font-size:16px;font-weight:700;color:var(--tx);margin-bottom:11px}
+  .char-stats{display:flex;gap:16px;flex-wrap:wrap}
+  .cs{display:flex;flex-direction:column;gap:2px}
+  .cs i{font-size:10px;font-style:normal;color:var(--tx3);white-space:nowrap}
+  .cs b{font-size:20px;font-weight:800;color:var(--ac);line-height:1;font-variant-numeric:tabular-nums}
+  .rowstat{font-size:12px;color:var(--tx3);font-weight:500;margin-left:10px}
   .opt[disabled]{opacity:.35;cursor:not-allowed}
   .opt[disabled]:hover{border-color:var(--bd);background:var(--bg)}
   .opt .dis-note{display:block;font-size:10px;color:var(--rd);margin-top:3px}
@@ -91,7 +97,7 @@
 const API='/api';
 let GC={}, CHARS=[], LOGK=0;
 const sel={my:null,opp:null,ball:null,mode:null,zone:null};
-const ORDER=['my','opp','ball','mode','zone'];
+const ORDER=['ball','mode','my','opp','zone'];   // 상황(무엇·어떻게)을 먼저, 그 다음 선수
 
 const ZONES=[
   {key:'FirstThirdPenalty', l1:'우리', l2:'Penalty Area',                label:'우리 Penalty Area'},
@@ -108,12 +114,21 @@ const BALLS=[
 ];
 const MODES={auto:'자동 수비', manual:'수동 수비'};
 const STEP_META={
-  my:  {n:1,lbl:'내 캐릭터',  title:'내 캐릭터를 고르세요',  sub:'수비하는 선수'},
-  opp: {n:2,lbl:'상대 캐릭터', title:'상대 캐릭터를 고르세요', sub:'공격하는 선수'},
-  ball:{n:3,lbl:'막을 행동',   title:'무엇을 막나요?',         sub:'드리블 / 패스 / 슈팅'},
-  mode:{n:4,lbl:'수비 방식',   title:'어떻게 막나요?',         sub:'수동 / 자동'},
+  ball:{n:1,lbl:'막을 행동',   title:'무엇을 막나요?',         sub:'드리블 / 패스 / 슈팅'},
+  mode:{n:2,lbl:'수비 방식',   title:'어떻게 막나요?',         sub:'수동 / 자동'},
+  my:  {n:3,lbl:'내 캐릭터',  title:'내 캐릭터를 고르세요',  sub:'수비하는 선수 · 주요 스탯'},
+  opp: {n:4,lbl:'상대 캐릭터', title:'상대 캐릭터를 고르세요', sub:'공격하는 선수 · 주요 스탯'},
   zone:{n:5,lbl:'수비 위치',   title:'어디서 막나요?',         sub:'필드 위치'},
 };
+// 행동/방식에 따른 주요 스탯
+const STAT_LABEL={reflexes:'반응속도',defensiveAwareness:'수비 인지',marking:'마킹',standingTackle:'스탠딩 태클',slidingTackle:'슬라이딩 태클',blockPass:'패스 차단',blockShot:'슛 블록',composure:'침착성',dribbling:'드리블',groundPass:'그라운드 패스',shootAccuracy:'슛 정확도'};
+function defStatsFor(ball,mode){
+  if(mode==='auto') return ball==='shot'?['reflexes','defensiveAwareness','blockShot']:['reflexes','defensiveAwareness','blockPass'];
+  if(ball==='dribble') return ['standingTackle','marking'];
+  if(ball==='shot')    return ['standingTackle','blockShot'];
+  return ['standingTackle','blockPass']; // manual pass
+}
+function atkStatFor(ball){ return ball==='dribble'?'dribbling':ball==='shot'?'shootAccuracy':'groundPass'; }
 
 function nrm(v,k){var x=(v-51)/49;if(x<0)x=0;else if(x>1)x=1;return k>0?Math.log(1+k*x)/Math.log(1+k):x;}
 function g(key,fb){return GC[key]!==undefined?GC[key]:fb;}
@@ -172,7 +187,8 @@ function render(){
 function summaryRow(key){
   const m=STEP_META[key];
   let v='';
-  if(key==='my'||key==='opp') v=sel[key].name;
+  if(key==='my'){const fs=defStatsFor(sel.ball,sel.mode);v=sel.my.name+'<span class="rowstat">'+fs.map(f=>STAT_LABEL[f]+' '+(sel.my[f]!=null?sel.my[f]:'-')).join(' · ')+'</span>';}
+  else if(key==='opp'){const f=atkStatFor(sel.ball);v=sel.opp.name+'<span class="rowstat">'+STAT_LABEL[f]+' '+(sel.opp[f]!=null?sel.opp[f]:'-')+'</span>';}
   else if(key==='ball') v=BALLS.find(b=>b.key===sel.ball).icon+' '+BALLS.find(b=>b.key===sel.ball).label;
   else if(key==='mode') v=MODES[sel.mode];
   else if(key==='zone') v=ZONES.find(z=>z.key===sel.zone).label;
@@ -184,10 +200,11 @@ function chooser(key,isEdit){
   let body='';
   if(key==='my'||key==='opp'){
     const isDef=key==='my';
+    const fields=isDef?defStatsFor(sel.ball,sel.mode):[atkStatFor(sel.ball)];
     body=`<input class="search" id="csearch" placeholder="이름 검색…"><div class="chip-grid" id="cgrid">`+
       CHARS.map(c=>{
-        const s=isDef?`마킹 ${c.marking||'-'} · 태클 ${c.standingTackle||'-'}`:`드리블 ${c.dribbling||'-'} · 패스 ${c.groundPass||'-'}`;
-        return `<button class="opt" data-pick="${c.name}"><span>${c.name}</span><span class="ostat">${s}</span></button>`;
+        const stats=fields.map(f=>`<span class="cs"><i>${STAT_LABEL[f]||f}</i><b>${c[f]!=null?c[f]:'-'}</b></span>`).join('');
+        return `<button class="opt char" data-pick="${c.name}"><span class="char-name">${c.name}</span><span class="char-stats">${stats}</span></button>`;
       }).join('')+`</div>`;
   } else if(key==='ball'){
     body=`<div class="opts">`+BALLS.map(b=>`<button class="opt big" data-pick="${b.key}">${b.icon} ${b.label}</button>`).join('')+`</div>`;
