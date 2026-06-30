@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>타겟 선정 시뮬레이터 (초기)</title>
+<style>
+:root{--bg:#0f0f13;--sf:#16161e;--sf2:#1e1e2e;--bd:#2a2a3e;--bdh:#3a3a5e;--tx:#e2e8f0;--tx2:#94a3b8;--tx3:#64748b;--ac:#818cf8;--acbg:rgba(129,140,248,0.1);--gn:#34d399;--yl:#fbbf24;--rd:#f87171}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+nav{display:flex;gap:0;background:var(--sf);border-bottom:1px solid var(--bd);padding:0 16px}
+nav a{padding:12px 20px;color:var(--tx2);text-decoration:none;border-bottom:2px solid transparent;transition:.15s;font-size:13px}
+nav a:hover{color:var(--tx)}
+nav a.active{color:var(--ac);border-bottom-color:var(--ac)}
+.main{padding:16px;display:grid;grid-template-columns:65fr 35fr;gap:12px;max-width:1400px;margin:0 auto}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px}
+.card-title{font-size:12px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.full-width{grid-column:1/-1}
+canvas{display:block;max-width:100%;height:auto;border-radius:4px;cursor:crosshair}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--tx2)}
+.legend-item{display:flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+/* Controls */
+.ctrl-section{margin-bottom:14px}
+.ctrl-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.ctrl-label{color:var(--tx2);font-size:12px;min-width:72px}
+.radio-group{display:flex;gap:6px}
+.radio-group label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:var(--tx2)}
+.radio-group input[type=radio]{accent-color:var(--ac)}
+input[type=range]{accent-color:var(--ac);width:110px}
+input[type=number]{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);border-radius:4px;padding:3px 6px;width:60px;font-size:12px}
+select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);border-radius:4px;padding:4px 6px;font-size:12px;width:100%}
+.badge{background:var(--acbg);border:1px solid var(--ac);color:var(--ac);border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600}
+.badge-gn{background:rgba(52,211,153,.1);border-color:var(--gn);color:var(--gn)}
+.badge-yl{background:rgba(251,191,36,.1);border-color:var(--yl);color:var(--yl)}
+.stats-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.stat-chip{background:var(--sf2);border:1px solid var(--bd);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--tx2)}
+.btn{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--bdh);color:var(--ac)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-red{border-color:rgba(248,113,113,.4);color:var(--rd)}
+.btn-red:hover{border-color:var(--rd)}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+/* Collapsible variables */
+details{margin-top:10px}
+summary{cursor:pointer;font-size:12px;color:var(--tx2);user-select:none;padding:4px 0}
+summary:hover{color:var(--tx)}
+.var-grid{display:grid;grid-template-columns:1fr auto;gap:4px 8px;margin-top:8px;align-items:center}
+.var-name{font-size:11px;color:var(--tx3);font-family:monospace}
+.var-input{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);border-radius:3px;padding:2px 5px;width:56px;font-size:11px;text-align:right}
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--sf2);color:var(--tx2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--bd);white-space:nowrap;font-weight:600}
+td{padding:6px 10px;border-bottom:1px solid rgba(42,42,62,.5);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.winner td{background:rgba(52,211,153,.06)}
+tr.zone-row td{color:var(--tx2);font-style:italic}
+.prob-bar-cell{position:relative;min-width:100px}
+.prob-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(129,140,248,.18);border-radius:2px;pointer-events:none}
+.prob-val{position:relative;z-index:1}
+/* Context menu */
+#ctxMenu{position:fixed;background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:4px 0;z-index:1000;display:none;min-width:120px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+#ctxMenu div{padding:7px 14px;cursor:pointer;font-size:12px;color:var(--tx)}
+#ctxMenu div:hover{background:var(--acbg);color:var(--ac)}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="graph_defence.html">수비</a>
+  <a href="graph_target.html">타겟 선정 (최종)</a>
+  <a class="active" href="graph_target_init.html">타겟 선정 (초기)</a>
+  <a href="graph_gk.html">GK</a>
+  <a href="graph_run.html">Run</a>
+  <a href="graph_pass.html">Pass</a>
+</nav>
+
+<div class="main">
+  <!-- LEFT: Tactical Board -->
+  <div class="card">
+    <div class="card-title">전술 보드</div>
+    <canvas id="field" width="840" height="544"></canvas>
+    <div class="legend">
+      <span class="legend-item"><span class="dot" style="background:#60a5fa"></span>수비팀</span>
+      <span class="legend-item"><span class="dot" style="background:#f87171"></span>공격팀</span>
+      <span class="legend-item"><span class="dot" style="background:rgba(96,165,250,.3);border:2px solid #60a5fa"></span>GK</span>
+      <span class="legend-item"><span style="color:#fb923c;font-weight:700">✕</span>&nbsp;드리블러</span>
+      <span class="legend-item"><span class="dot" style="background:#818cf8"></span>태클러 (T)</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="card">
+    <div class="card-title">설정</div>
+
+    <div class="ctrl-section">
+      <div class="ctrl-row">
+        <span class="ctrl-label">태클 타입</span>
+        <div class="radio-group">
+          <label><input type="radio" name="tackletype" value="normal" checked> Normal</label>
+          <label><input type="radio" name="tackletype" value="hustle"> Hustle</label>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">볼 타입</span>
+        <div class="radio-group">
+          <label><input type="radio" name="balltype" value="dribble" checked> Dribble</label>
+          <label><input type="radio" name="balltype" value="pass"> Pass</label>
+        </div>
+        <span class="badge-yl badge" id="alphaBadge">α = 1.00</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">TQ 점수</span>
+        <input type="range" id="tqSlider" min="0" max="1" step="0.01" value="0.3">
+        <span id="tqVal" style="font-size:12px;color:var(--yl);min-width:34px">0.30</span>
+      </div>
+    </div>
+
+    <div class="ctrl-section">
+      <div class="card-title" style="margin-bottom:6px">수비자</div>
+      <select id="tacklerSel"><option value="">-- 캐릭터 선택 (API 연결 중...) --</option></select>
+      <div id="manualStats" style="display:none;margin-top:8px">
+        <div class="ctrl-row">
+          <span class="ctrl-label" style="font-size:11px">Mk</span>
+          <input type="number" class="var-input" id="statMk" value="75" min="51" max="100">
+          <span class="ctrl-label" style="font-size:11px">Cm</span>
+          <input type="number" class="var-input" id="statCm" value="75" min="51" max="100">
+          <span class="ctrl-label" style="font-size:11px">BP</span>
+          <input type="number" class="var-input" id="statBp" value="75" min="51" max="100">
+        </div>
+      </div>
+      <div class="stats-row" id="statsChips"></div>
+    </div>
+
+    <div class="ctrl-section">
+      <div class="card-title" style="margin-bottom:4px">플레이어 편집</div>
+      <div class="btn-group">
+        <button class="btn" id="addAllyBtn" onclick="addAlly()">+ 아군</button>
+        <button class="btn" id="addEnemyBtn" onclick="addEnemy()">+ 적군</button>
+        <button class="btn btn-red" onclick="resetPlayers()">초기화</button>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:6px">캔버스 클릭: 태클 방향 설정 | 우클릭 플레이어: 메뉴</div>
+    </div>
+
+    <details>
+      <summary>⚙️ 변수 설정</summary>
+      <div class="var-grid" id="varGrid"></div>
+    </details>
+  </div>
+
+  <!-- BOTTOM: Score Table -->
+  <div class="card full-width">
+    <div class="card-title">후보 점수 표</div>
+    <div class="tbl-wrap">
+      <table id="scoreTable">
+        <thead>
+          <tr>
+            <th>타겟</th><th>팀</th><th>위치점수</th><th>위협점수</th>
+            <th>총점</th><th>순위</th><th>퍼센타일</th><th>α</th><th>선택확률</th>
+          </tr>
+        </thead>
+        <tbody id="scoreBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div id="ctxMenu">
+  <div onclick="ctxToggleGK()">GK 토글</div>
+  <div onclick="ctxToggleDribbler()">드리블러 지정/해제</div>
+  <div onclick="ctxDelete()" style="color:var(--rd)">삭제</div>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+const SCALE = 8;
+const W_M = 105, H_M = 68;
+const CW = W_M * SCALE, CH = H_M * SCALE; // 840, 544
+const CANDIDATE_R = 20, THREAT_R = 5;
+const ZONE_HALF_ANG = 45, EXCLUDE_ANG = 135;
+const DRIBBLER_PENALTY = -20;
+
+function fx(mx){ return (mx + 52.5) * SCALE; }
+function fy(my){ return (34 - my) * SCALE; }
+function mx(cx){ return cx / SCALE - 52.5; }
+function my(cy){ return 34 - cy / SCALE; }
+function dist(a, b){ return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2); }
+function deg2rad(d){ return d * Math.PI / 180; }
+function rad2deg(r){ return r * 180 / Math.PI; }
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let tackleDir = 30;
+let tackleType = 'normal';
+let ballType = 'dribble';
+let tqScore = 0.3;
+let tacklerStats = null;
+let dragging = null;
+let ctxTarget = null;
+let nextId = 9;
+let lastResults = [];
+
+const vars = {
+  dribDefault:1, dribWMk:0.5, dribWCm:0.3, dribWTq:1,
+  passDefault:1, passWInt:0.5, passWCm:0.3, passWTq:1,
+  scoreNormalLong:2, scoreNormalShort:0, scoreWeird:-2
+};
+
+let players = [
+  {id:0, team:'def', role:'tackler', gk:false, x:0,    y:0,   label:'T' },
+  {id:1, team:'def', role:'ally',    gk:false, x:-20,  y:15,  label:'A1'},
+  {id:2, team:'def', role:'ally',    gk:false, x:-30,  y:-10, label:'A2'},
+  {id:3, team:'def', role:'ally',    gk:false, x:10,   y:-20, label:'A3'},
+  {id:4, team:'def', role:'ally',    gk:true,  x:-50,  y:0,   label:'GK'},
+  {id:5, team:'atk', role:'dribbler',gk:false, x:8,    y:5,   label:'D' },
+  {id:6, team:'atk', role:'enemy',   gk:false, x:25,   y:10,  label:'E1'},
+  {id:7, team:'atk', role:'enemy',   gk:false, x:30,   y:-15, label:'E2'},
+  {id:8, team:'atk', role:'enemy',   gk:false, x:15,   y:-5,  label:'E3'},
+];
+
+// ─── Canvas Setup ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
+
+// ─── Drawing: Field ───────────────────────────────────────────────────────────
+function drawField(c) {
+  // Background
+  c.fillStyle = '#0d2b0d';
+  c.fillRect(0, 0, CW, CH);
+
+  // Stripe pattern
+  for(let i = 0; i < 10; i++) {
+    if(i % 2 === 0) {
+      c.fillStyle = 'rgba(0,0,0,0.08)';
+      c.fillRect(i * (CW/10), 0, CW/10, CH);
+    }
+  }
+
+  c.strokeStyle = 'rgba(255,255,255,0.85)';
+  c.lineWidth = 1;
+
+  // Boundary
+  c.strokeRect(0, 0, CW, CH);
+
+  // Center line
+  c.beginPath();
+  c.moveTo(CW/2, 0); c.lineTo(CW/2, CH);
+  c.stroke();
+
+  // Center circle (9.15m radius)
+  c.beginPath();
+  c.arc(CW/2, CH/2, 9.15 * SCALE, 0, Math.PI*2);
+  c.stroke();
+
+  // Center spot
+  c.fillStyle = 'white';
+  c.beginPath();
+  c.arc(CW/2, CH/2, 2, 0, Math.PI*2);
+  c.fill();
+
+  // Penalty areas: 16.5m deep, 40.32m wide (centered)
+  const paDepth = 16.5 * SCALE;
+  const paWidth = 40.32 * SCALE;
+  const paTop = (CH - paWidth) / 2;
+  // Left penalty area
+  c.strokeRect(0, paTop, paDepth, paWidth);
+  // Right penalty area
+  c.strokeRect(CW - paDepth, paTop, paDepth, paWidth);
+
+  // Goal areas: 5.5m deep, 18.32m wide
+  const gaDepth = 5.5 * SCALE;
+  const gaWidth = 18.32 * SCALE;
+  const gaTop = (CH - gaWidth) / 2;
+  c.strokeRect(0, gaTop, gaDepth, gaWidth);
+  c.strokeRect(CW - gaDepth, gaTop, gaDepth, gaWidth);
+
+  // Goals: 7.32m wide, 2.44m deep
+  const goalW = 7.32 * SCALE;
+  const goalD = 2.44 * SCALE;
+  const goalTop = (CH - goalW) / 2;
+  c.strokeStyle = 'rgba(255,255,255,0.5)';
+  c.strokeRect(-goalD, goalTop, goalD, goalW);
+  c.strokeRect(CW, goalTop, goalD, goalW);
+
+  // Penalty spots
+  c.fillStyle = 'white';
+  c.strokeStyle = 'rgba(255,255,255,0.85)';
+  c.beginPath(); c.arc(11 * SCALE, CH/2, 2, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.arc((W_M - 11) * SCALE, CH/2, 2, 0, Math.PI*2); c.fill();
+
+  // Penalty arcs
+  c.beginPath();
+  c.arc(11 * SCALE, CH/2, 9.15 * SCALE, -Math.PI*0.72, Math.PI*0.72);
+  c.stroke();
+  c.beginPath();
+  c.arc((W_M - 11) * SCALE, CH/2, 9.15 * SCALE, Math.PI - Math.PI*0.72, Math.PI + Math.PI*0.72);
+  c.stroke();
+
+  // Halfway marks (corner arcs)
+  c.lineWidth = 1;
+  const cArc = 1 * SCALE;
+  [[0,0],[CW,0],[0,CH],[CW,CH]].forEach(([cx2,cy2]) => {
+    const ax = cx2 === 0 ? Math.PI/2 : -Math.PI/2;
+    const ay = cy2 === 0 ? 0 : Math.PI;
+    c.beginPath();
+    c.arc(cx2, cy2, cArc, ay + (cx2===0?0:Math.PI), ay + (cx2===0?0:Math.PI) + Math.PI/2);
+    c.stroke();
+  });
+}
+
+// ─── Drawing: Zones ───────────────────────────────────────────────────────────
+function drawZones(c, tackler, tDir, tType, v) {
+  if(!tackler) return;
+  const tx = fx(tackler.x), ty = fy(tackler.y);
+  const dirRad = deg2rad(tDir);
+
+  // Helper: draw filled sector
+  function sector(cx2, cy2, r, startDeg, endDeg, color, label) {
+    const s = deg2rad(startDeg), e = deg2rad(endDeg);
+    c.beginPath();
+    c.moveTo(cx2, cy2);
+    c.arc(cx2, cy2, r, s, e);
+    c.closePath();
+    c.fillStyle = color;
+    c.fill();
+    if(label) {
+      const midA = (s + e) / 2;
+      const lr = r * 0.6;
+      c.fillStyle = 'rgba(255,255,255,0.5)';
+      c.font = '10px sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(label, cx2 + Math.cos(midA)*lr, cy2 + Math.sin(midA)*lr);
+    }
+  }
+
+  // Canvas direction: 0=right, π/2=down (y-flipped from math)
+  // tackledir is in standard math coords: 0=right, 90=up
+  // We need to negate y component for canvas: canvasAngle = -tDir (since fy flips y)
+  const canvDir = -dirRad; // canvas angle
+
+  const zHalf = deg2rad(ZONE_HALF_ANG);
+
+  // Normal_short: 0-10m, ±45° of tackle dir
+  sector(tx, ty, 10*SCALE, canvDir - zHalf, canvDir + zHalf, 'rgba(52,211,153,0.12)',
+    'NS:' + v.scoreNormalShort);
+
+  // Normal_long: 10-20m, ±45° — draw as annular sector via clip trick
+  // Draw full sector then overdraw inner
+  c.save();
+  c.beginPath();
+  c.moveTo(tx, ty);
+  c.arc(tx, ty, 20*SCALE, canvDir - zHalf, canvDir + zHalf);
+  c.closePath();
+  c.clip();
+  c.beginPath();
+  c.arc(tx, ty, 20*SCALE, 0, Math.PI*2);
+  c.fillStyle = 'rgba(52,211,153,0.20)';
+  c.fill();
+  c.beginPath();
+  c.arc(tx, ty, 10*SCALE, 0, Math.PI*2);
+  c.fillStyle = '#0d2b0d'; // overwrite inner with field color
+  c.fill();
+  // Re-add Normal_short over the overdraw
+  c.beginPath();
+  c.moveTo(tx, ty);
+  c.arc(tx, ty, 10*SCALE, canvDir - zHalf, canvDir + zHalf);
+  c.closePath();
+  c.fillStyle = 'rgba(52,211,153,0.12)';
+  c.fill();
+  c.restore();
+
+  // Zone label for NL
+  const nlMidA = canvDir;
+  const nlLr = 15 * SCALE;
+  c.fillStyle = 'rgba(52,211,153,0.7)';
+  c.font = '10px sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText('NL:' + v.scoreNormalLong, tx + Math.cos(nlMidA)*nlLr, ty + Math.sin(nlMidA)*nlLr);
+  c.fillText('NS:' + v.scoreNormalShort, tx + Math.cos(nlMidA)*6*SCALE, ty + Math.sin(nlMidA)*6*SCALE);
+
+  // Weird_L: 0-5m, centered at tackleDir+90°, ±45°
+  const wlDir = canvDir - Math.PI/2; // +90° in math = -90° in canvas
+  sector(tx, ty, 5*SCALE, wlDir - zHalf, wlDir + zHalf, 'rgba(248,113,113,0.15)',
+    'W:' + v.scoreWeird);
+
+  // Weird_R: 0-5m, centered at tackleDir-90°
+  const wrDir = canvDir + Math.PI/2;
+  sector(tx, ty, 5*SCALE, wrDir - zHalf, wrDir + zHalf, 'rgba(248,113,113,0.15)',
+    'W:' + v.scoreWeird);
+}
+
+// ─── Drawing: Candidate Circle ────────────────────────────────────────────────
+function drawCandidateCircle(c, tackler) {
+  if(!tackler) return;
+  const tx = fx(tackler.x), ty = fy(tackler.y);
+  c.save();
+  c.setLineDash([5,4]);
+  c.strokeStyle = 'rgba(148,163,184,0.4)';
+  c.lineWidth = 1;
+  c.beginPath();
+  c.arc(tx, ty, CANDIDATE_R * SCALE, 0, Math.PI*2);
+  c.stroke();
+  c.setLineDash([]);
+  c.fillStyle = 'rgba(148,163,184,0.3)';
+  c.font = '10px sans-serif';
+  c.textAlign = 'left';
+  c.textBaseline = 'middle';
+  c.fillText('20m', tx + CANDIDATE_R*SCALE + 2, ty);
+  c.restore();
+}
+
+// ─── Drawing: Exclusion Zone ──────────────────────────────────────────────────
+function drawExclusionZone(c, tackler, tDir, tType) {
+  if(!tackler || tType !== 'normal') return;
+  const tx = fx(tackler.x), ty = fy(tackler.y);
+  const canvDir = -deg2rad(tDir);
+  // Exclusion: ±135° behind tackler = angles outside ±45° (front)
+  // Behind = canvDir + 180° ± 90° spread drawn as the complement
+  const frontHalf = deg2rad(EXCLUDE_ANG); // 135°
+  // Draw the excluded arc (behind): from canvDir+frontHalf to canvDir+2π-frontHalf going through canvDir+π
+  const startA = canvDir + frontHalf;
+  const endA = canvDir + Math.PI*2 - frontHalf;
+  c.save();
+  c.beginPath();
+  c.moveTo(tx, ty);
+  c.arc(tx, ty, CANDIDATE_R * SCALE, startA, endA);
+  c.closePath();
+  c.fillStyle = 'rgba(248,113,113,0.08)';
+  c.fill();
+  c.restore();
+}
+
+// ─── Drawing: Threat Circles ──────────────────────────────────────────────────
+function drawThreatCircles(c, candidates, allPlayers) {
+  const charCands = candidates.filter(p => p.team !== 'zone');
+  charCands.forEach(cand => {
+    const cx2 = fx(cand.x), cy2 = fy(cand.y);
+    c.save();
+    c.setLineDash([3,3]);
+    c.strokeStyle = 'rgba(148,163,184,0.25)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.arc(cx2, cy2, THREAT_R * SCALE, 0, Math.PI*2);
+    c.stroke();
+    c.setLineDash([]);
+    c.restore();
+  });
+}
+
+// ─── Drawing: Players ─────────────────────────────────────────────────────────
+function drawPlayers(c, plrs, results) {
+  plrs.forEach(p => {
+    const cx2 = fx(p.x), cy2 = fy(p.y);
+    const R = 14;
+
+    // Determine color
+    let fillColor, strokeColor;
+    if(p.role === 'tackler') {
+      fillColor = 'rgba(129,140,248,0.85)';
+      strokeColor = '#818cf8';
+    } else if(p.role === 'dribbler') {
+      fillColor = 'rgba(251,146,60,0.7)';
+      strokeColor = '#fb923c';
+    } else if(p.team === 'def') {
+      fillColor = p.gk ? 'rgba(96,165,250,0.3)' : 'rgba(96,165,250,0.75)';
+      strokeColor = '#60a5fa';
+    } else {
+      fillColor = p.gk ? 'rgba(248,113,113,0.3)' : 'rgba(248,113,113,0.75)';
+      strokeColor = '#f87171';
+    }
+
+    // Shadow
+    c.save();
+    c.shadowColor = strokeColor;
+    c.shadowBlur = p.role === 'tackler' ? 10 : 4;
+
+    // Circle
+    c.beginPath();
+    c.arc(cx2, cy2, R, 0, Math.PI*2);
+    c.fillStyle = fillColor;
+    c.fill();
+    c.strokeStyle = strokeColor;
+    c.lineWidth = p.role === 'tackler' ? 2 : 1.5;
+    c.stroke();
+
+    // Double ring for tackler
+    if(p.role === 'tackler') {
+      c.beginPath();
+      c.arc(cx2, cy2, R + 4, 0, Math.PI*2);
+      c.strokeStyle = 'rgba(129,140,248,0.5)';
+      c.lineWidth = 1;
+      c.stroke();
+    }
+    c.restore();
+
+    // Dribbler X mark
+    if(p.role === 'dribbler') {
+      c.strokeStyle = '#fff';
+      c.lineWidth = 2;
+      const d = 5;
+      c.beginPath();
+      c.moveTo(cx2-d, cy2-d); c.lineTo(cx2+d, cy2+d);
+      c.moveTo(cx2+d, cy2-d); c.lineTo(cx2-d, cy2+d);
+      c.stroke();
+    }
+
+    // Label
+    c.fillStyle = p.gk ? 'rgba(255,255,255,0.6)' : '#fff';
+    c.font = `bold ${p.label.length > 2 ? 9 : 10}px sans-serif`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    if(p.role !== 'dribbler') c.fillText(p.label, cx2, cy2);
+
+    // GK label overlay
+    if(p.gk && p.role !== 'tackler') {
+      c.fillStyle = 'rgba(255,255,255,0.5)';
+      c.font = '8px sans-serif';
+      c.fillText('GK', cx2, cy2 + R + 7);
+    }
+
+    // Score overlay badge from results
+    const res = results.find(r => r.id === p.id);
+    if(res && res.prob !== undefined) {
+      const pct = Math.round(res.prob * 100);
+      const bx = cx2, by = cy2 - R - 12;
+      const txt = `${pct}%`;
+      c.font = 'bold 10px sans-serif';
+      const tw = c.measureText(txt).width + 8;
+      c.fillStyle = 'rgba(15,15,19,0.85)';
+      c.beginPath();
+      c.roundRect(bx - tw/2, by - 7, tw, 14, 3);
+      c.fill();
+      c.fillStyle = pct >= 30 ? '#34d399' : pct >= 10 ? '#fbbf24' : '#94a3b8';
+      c.fillText(txt, bx, by);
+    }
+  });
+}
+
+// ─── Drawing: Tackle Arrow ────────────────────────────────────────────────────
+function drawTackleArrow(c, tackler, tDir) {
+  if(!tackler) return;
+  const tx = fx(tackler.x), ty = fy(tackler.y);
+  const canvDir = -deg2rad(tDir);
+  const len = 25 * SCALE;
+  const ex = tx + Math.cos(canvDir) * len;
+  const ey = ty + Math.sin(canvDir) * len;
+
+  c.save();
+  c.strokeStyle = '#fbbf24';
+  c.lineWidth = 2;
+  c.shadowColor = '#fbbf24';
+  c.shadowBlur = 6;
+  c.beginPath();
+  c.moveTo(tx, ty);
+  c.lineTo(ex, ey);
+  c.stroke();
+
+  // Arrowhead
+  const headLen = 10, headAng = 0.4;
+  c.beginPath();
+  c.moveTo(ex, ey);
+  c.lineTo(ex - headLen*Math.cos(canvDir - headAng), ey - headLen*Math.sin(canvDir - headAng));
+  c.moveTo(ex, ey);
+  c.lineTo(ex - headLen*Math.cos(canvDir + headAng), ey - headLen*Math.sin(canvDir + headAng));
+  c.stroke();
+  c.restore();
+}
+
+// ─── Score Calculation ────────────────────────────────────────────────────────
+const ZONES = [
+  {id:'z_nl', label:'Normal_long',  team:'zone', zoneKey:'normal_long' },
+  {id:'z_ns', label:'Normal_short', team:'zone', zoneKey:'normal_short'},
+  {id:'z_wl', label:'Weird_L',      team:'zone', zoneKey:'weird'       },
+  {id:'z_wr', label:'Weird_R',      team:'zone', zoneKey:'weird'       },
+];
+
+function angleDiff(a, b) {
+  // Difference between angles a and b in degrees, range [0, 180]
+  let d = Math.abs((a - b + 360) % 360);
+  if(d > 180) d = 360 - d;
+  return d;
+}
+
+function playerAngleFromTackler(p, tackler) {
+  const dx = p.x - tackler.x, dy = p.y - tackler.y;
+  return rad2deg(Math.atan2(dy, dx));
+}
+
+function getCandidates(plrs, tackler, tDir, tType) {
+  if(!tackler) return [];
+  const chars = plrs.filter(p => {
+    if(p.id === tackler.id || p.gk) return false;
+    if(p.role === 'tackler') return false;
+    const d = dist(p, tackler);
+    if(d > CANDIDATE_R) return false;
+    if(tType === 'normal') {
+      const ang = playerAngleFromTackler(p, tackler);
+      const diff = angleDiff(ang, tDir);
+      if(diff > EXCLUDE_ANG) return false;
+    }
+    return true;
+  });
+  return [...chars, ...ZONES];
+}
+
+function calcPositionScores(plrs, tacklerId, dribblerId) {
+  const scores = {};
+
+  const defPlayers = plrs.filter(p => p.team==='def' && p.id!==tacklerId && !p.gk);
+  const atkPlayers = plrs.filter(p => p.team==='atk' && !p.gk);
+  const N_def = defPlayers.length, N_atk = atkPlayers.length;
+
+  const sortedDef = [...defPlayers].sort((a,b) => b.x - a.x); // 상대 엔드라인 근접 순
+  const sortedAtk = [...atkPlayers].sort((a,b) => a.x - b.x); // 아군 엔드라인 근접 순
+
+  // 아군 → 양수 (상대 엔드라인에 가까울수록 좋은 타겟)
+  sortedDef.forEach((p,i) => { scores[p.id] =  (N_def - i); });
+  // 적군 → 음수 (아군 엔드라인에 가까울수록 나쁜 타겟)
+  sortedAtk.forEach((p,i) => { scores[p.id] = -(N_atk - i); });
+
+  if(dribblerId !== null && scores[dribblerId] !== undefined) {
+    scores[dribblerId] += DRIBBLER_PENALTY;
+  }
+  return scores;
+}
+
+function calcThreatScores(candidates, plrs) {
+  const scores = {};
+  candidates.filter(c => c.team !== 'zone').forEach(cand => {
+    let t = 0;
+    if(cand.team === 'def') {
+      plrs.filter(p => p.team==='atk').forEach(e => {
+        if(dist(cand,e) <= THREAT_R) t -= 1;
+      });
+    } else {
+      plrs.filter(p => p.team==='def').forEach(a => {
+        if(dist(cand,a) <= THREAT_R) t += 1;
+      });
+    }
+    scores[cand.id] = t;
+  });
+  return scores;
+}
+
+function getZoneScore(zoneKey, v) {
+  if(zoneKey === 'normal_long') return v.scoreNormalLong;
+  if(zoneKey === 'normal_short') return v.scoreNormalShort;
+  return v.scoreWeird;
+}
+
+function assignRanks(candidates) {
+  const sorted = [...candidates].sort((a,b) => b.totalScore - a.totalScore);
+  let rank = 1;
+  sorted.forEach((c,i) => {
+    if(i > 0 && c.totalScore < sorted[i-1].totalScore) rank = i + 1;
+    c.rank = rank;
+  });
+  return sorted;
+}
+
+function calcAlpha(stats, tq, bType, v) {
+  if(!stats) return bType === 'dribble' ? v.dribDefault : v.passDefault;
+  const mk_n = (stats.mk - 51) / 49;
+  const cm_n = (stats.cm - 51) / 49;
+  const bp_n = (stats.bp - 51) / 49;
+  if(bType === 'dribble') return v.dribDefault + v.dribWMk*mk_n + v.dribWCm*cm_n + tq*v.dribWTq;
+  return v.passDefault + v.passWInt*bp_n + v.passWCm*cm_n + tq*(1-v.passWTq);
+}
+
+function calcProbs(rankedCandidates, alpha) {
+  const N = rankedCandidates.length;
+  if(N === 0) return [];
+  if(N === 1) return [{...rankedCandidates[0], percentile:1, prob:1}];
+  // 순위 기반 퍼센타일: p_i = (N - rank_i) / (N - 1)
+  const result = rankedCandidates.map(c => {
+    const percentile = (N - c.rank) / (N - 1);
+    return {...c, percentile, expVal: Math.exp(alpha * percentile)};
+  });
+  const sumExp = result.reduce((s,c) => s + c.expVal, 0);
+  return result.map(c => ({...c, prob: c.expVal / sumExp}));
+}
+
+function computeResults() {
+  const tackler = players.find(p => p.role === 'tackler');
+  const dribbler = players.find(p => p.role === 'dribbler');
+  const dribblerId = dribbler ? dribbler.id : null;
+
+  const candidates = getCandidates(players, tackler, tackleDir, tackleType);
+  const posScores = calcPositionScores(players, tackler ? tackler.id : -1, dribblerId);
+  const threatScores = calcThreatScores(candidates, players);
+
+  const scored = candidates.map(c => {
+    let pos = 0, thr = 0, total = 0;
+    if(c.team === 'zone') {
+      total = getZoneScore(c.zoneKey, vars);
+    } else {
+      pos = posScores[c.id] || 0;
+      thr = threatScores[c.id] || 0;
+      total = pos + thr;
+    }
+    return {...c, posScore: pos, threatScore: thr, totalScore: total};
+  });
+
+  const ranked = assignRanks(scored);
+  const alpha = calcAlpha(tacklerStats, tqScore, ballType, vars);
+  const final = calcProbs(ranked, alpha);
+
+  return {final, alpha, tackler, candidates};
+}
+
+// ─── Redraw ───────────────────────────────────────────────────────────────────
+function redraw() {
+  const {final, alpha, tackler, candidates} = computeResults();
+  lastResults = final;
+
+  ctx.clearRect(0, 0, CW, CH);
+  drawField(ctx);
+  if(tackler) {
+    drawExclusionZone(ctx, tackler, tackleDir, tackleType);
+    drawZones(ctx, tackler, tackleDir, tackleType, vars);
+    drawCandidateCircle(ctx, tackler);
+    drawThreatCircles(ctx, candidates, players);
+  }
+  drawPlayers(ctx, players, final);
+  if(tackler) drawTackleArrow(ctx, tackler, tackleDir);
+
+  updateAlphaBadge(alpha);
+  updateTable(final, alpha);
+}
+
+// ─── Table Update ─────────────────────────────────────────────────────────────
+function updateTable(results, alpha) {
+  const tbody = document.getElementById('scoreBody');
+  if(!results.length) { tbody.innerHTML = '<tr><td colspan="9" style="color:var(--tx3);text-align:center">후보 없음</td></tr>'; return; }
+
+  const maxProb = Math.max(...results.map(r => r.prob || 0));
+
+  tbody.innerHTML = results.map(r => {
+    const isWinner = r.prob === maxProb;
+    const isZone = r.team === 'zone';
+    const pct = r.prob !== undefined ? (r.prob * 100).toFixed(1) : '0.0';
+    const percentileStr = r.percentile !== undefined ? (r.percentile > 0 ? '+' : '') + r.percentile : '-';
+    const teamLabel = isZone ? '존' : (r.team === 'def' ? '수비' : '공격');
+    const teamColor = isZone ? 'var(--tx3)' : (r.team === 'def' ? '#60a5fa' : '#f87171');
+
+    return `<tr class="${isWinner ? 'winner' : ''} ${isZone ? 'zone-row' : ''}">
+      <td><strong>${r.label}</strong></td>
+      <td style="color:${teamColor}">${teamLabel}</td>
+      <td>${isZone ? '-' : (r.posScore > 0 ? '+' : '') + r.posScore}</td>
+      <td>${isZone ? '-' : (r.threatScore > 0 ? '+' : '') + r.threatScore}</td>
+      <td><strong>${(r.totalScore > 0 ? '+' : '') + r.totalScore}</strong></td>
+      <td>${r.rank}</td>
+      <td>${percentileStr}</td>
+      <td>${alpha.toFixed(2)}</td>
+      <td class="prob-bar-cell">
+        <div class="prob-bar" style="width:${pct}%"></div>
+        <span class="prob-val" style="color:${isWinner ? 'var(--gn)' : 'var(--tx)'}">${pct}%</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateAlphaBadge(alpha) {
+  document.getElementById('alphaBadge').textContent = `α = ${alpha.toFixed(2)}`;
+}
+
+// ─── Variables Panel ──────────────────────────────────────────────────────────
+const varDefs = [
+  ['dribDefault',   'Drib_Default'],
+  ['dribWMk',       'Drib_W_Marking'],
+  ['dribWCm',       'Drib_W_Composure'],
+  ['dribWTq',       'Drib_W_QualityScore'],
+  ['passDefault',   'Pass_Default'],
+  ['passWInt',      'Pass_W_Intercept'],
+  ['passWCm',       'Pass_W_Composure'],
+  ['passWTq',       'Pass_W_QualityScore'],
+  ['scoreNormalLong',  'Score_Normal_long'],
+  ['scoreNormalShort', 'Score_Normal_short'],
+  ['scoreWeird',       'Score_Weird'],
+];
+
+function buildVarGrid() {
+  const grid = document.getElementById('varGrid');
+  varDefs.forEach(([key, name]) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'var-name';
+    lbl.textContent = name;
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'var-input';
+    inp.value = vars[key];
+    inp.step = '0.1';
+    inp.addEventListener('input', () => {
+      vars[key] = parseFloat(inp.value) || 0;
+      redraw();
+    });
+    grid.appendChild(lbl);
+    grid.appendChild(inp);
+  });
+}
+
+// ─── Player Management ────────────────────────────────────────────────────────
+function allyCount() { return players.filter(p => p.team === 'def' && p.role !== 'tackler').length; }
+function enemyCount() { return players.filter(p => p.team === 'atk').length; }
+
+function updateAddButtons() {
+  document.getElementById('addAllyBtn').disabled = allyCount() >= 10;
+  document.getElementById('addEnemyBtn').disabled = enemyCount() >= 10;
+}
+
+function addAlly() {
+  if(allyCount() >= 10) return;
+  const n = allyCount() + 1;
+  players.push({id: nextId++, team:'def', role:'ally', gk:false, x:-15+Math.random()*10-5, y:Math.random()*20-10, label:`A${n}`});
+  updateAddButtons();
+  redraw();
+}
+
+function addEnemy() {
+  if(enemyCount() >= 10) return;
+  const n = enemyCount() + 1;
+  players.push({id: nextId++, team:'atk', role:'enemy', gk:false, x:15+Math.random()*10-5, y:Math.random()*20-10, label:`E${n}`});
+  updateAddButtons();
+  redraw();
+}
+
+function resetPlayers() {
+  nextId = 9;
+  players = [
+    {id:0, team:'def', role:'tackler', gk:false, x:0,    y:0,   label:'T' },
+    {id:1, team:'def', role:'ally',    gk:false, x:-20,  y:15,  label:'A1'},
+    {id:2, team:'def', role:'ally',    gk:false, x:-30,  y:-10, label:'A2'},
+    {id:3, team:'def', role:'ally',    gk:false, x:10,   y:-20, label:'A3'},
+    {id:4, team:'def', role:'ally',    gk:true,  x:-50,  y:0,   label:'GK'},
+    {id:5, team:'atk', role:'dribbler',gk:false, x:8,    y:5,   label:'D' },
+    {id:6, team:'atk', role:'enemy',   gk:false, x:25,   y:10,  label:'E1'},
+    {id:7, team:'atk', role:'enemy',   gk:false, x:30,   y:-15, label:'E2'},
+    {id:8, team:'atk', role:'enemy',   gk:false, x:15,   y:-5,  label:'E3'},
+  ];
+  tackleDir = 30; tackleType = 'normal'; ballType = 'dribble'; tqScore = 0.3;
+  document.querySelector('input[name=tackletype][value=normal]').checked = true;
+  document.querySelector('input[name=balltype][value=dribble]').checked = true;
+  document.getElementById('tqSlider').value = 0.3;
+  document.getElementById('tqVal').textContent = '0.30';
+  updateAddButtons();
+  redraw();
+}
+
+// ─── Context Menu ─────────────────────────────────────────────────────────────
+const ctxMenu = document.getElementById('ctxMenu');
+
+function showCtxMenu(x, y, pid) {
+  ctxTarget = pid;
+  ctxMenu.style.left = x + 'px';
+  ctxMenu.style.top = y + 'px';
+  ctxMenu.style.display = 'block';
+}
+
+function hideCtxMenu() { ctxMenu.style.display = 'none'; ctxTarget = null; }
+
+function ctxToggleGK() {
+  const p = players.find(p => p.id === ctxTarget);
+  if(p && p.role !== 'tackler') { p.gk = !p.gk; redraw(); }
+  hideCtxMenu();
+}
+
+function ctxToggleDribbler() {
+  const p = players.find(p => p.id === ctxTarget);
+  if(!p || p.role === 'tackler') { hideCtxMenu(); return; }
+  if(p.role === 'dribbler') {
+    p.role = 'enemy';
+    p.label = 'E?';
+  } else if(p.team === 'atk') {
+    // Un-dribbler any existing
+    players.filter(q => q.role === 'dribbler').forEach(q => { q.role = 'enemy'; });
+    p.role = 'dribbler';
+    p.label = 'D';
+  }
+  redraw();
+  hideCtxMenu();
+}
+
+function ctxDelete() {
+  if(ctxTarget === null) return;
+  const p = players.find(p => p.id === ctxTarget);
+  if(p && p.role !== 'tackler') {
+    players = players.filter(q => q.id !== ctxTarget);
+    updateAddButtons();
+    redraw();
+  }
+  hideCtxMenu();
+}
+
+document.addEventListener('click', (e) => {
+  if(!ctxMenu.contains(e.target)) hideCtxMenu();
+});
+
+// ─── Canvas Mouse Events ──────────────────────────────────────────────────────
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = CW / rect.width, scaleY = CH / rect.height;
+  return {
+    cx: (e.clientX - rect.left) * scaleX,
+    cy: (e.clientY - rect.top) * scaleY
+  };
+}
+
+function findPlayerAt(cx2, cy2) {
+  const threshold = 16 * (CW / canvas.getBoundingClientRect().width);
+  for(let i = players.length-1; i >= 0; i--) {
+    const p = players[i];
+    const dx = fx(p.x) - cx2, dy = fy(p.y) - cy2;
+    if(Math.sqrt(dx*dx+dy*dy) <= threshold) return p;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  hideCtxMenu();
+  const {cx, cy} = canvasPos(e);
+  if(e.button === 2) return; // handled separately
+  const p = findPlayerAt(cx, cy);
+  if(p) { dragging = {p, ox: p.x, oy: p.y, cx, cy}; }
+  else {
+    // Set tackle direction
+    const tackler = players.find(q => q.role === 'tackler');
+    if(tackler) {
+      const tx = fx(tackler.x), ty = fy(tackler.y);
+      const dx = cx - tx, dy = cy - ty;
+      tackleDir = rad2deg(Math.atan2(-dy, dx)); // negate dy since canvas y is flipped
+      redraw();
+    }
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if(!dragging) return;
+  const {cx, cy} = canvasPos(e);
+  dragging.p.x = Math.max(-52.5, Math.min(52.5, mx(cx)));
+  dragging.p.y = Math.max(-34, Math.min(34, my(cy)));
+  redraw();
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; });
+
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const {cx, cy} = canvasPos(e);
+  const p = findPlayerAt(cx, cy);
+  if(p) showCtxMenu(e.clientX, e.clientY, p.id);
+});
+
+// ─── Controls Event Listeners ─────────────────────────────────────────────────
+document.querySelectorAll('input[name=tackletype]').forEach(r => {
+  r.addEventListener('change', () => { tackleType = r.value; redraw(); });
+});
+document.querySelectorAll('input[name=balltype]').forEach(r => {
+  r.addEventListener('change', () => { ballType = r.value; redraw(); });
+});
+document.getElementById('tqSlider').addEventListener('input', e => {
+  tqScore = parseFloat(e.target.value);
+  document.getElementById('tqVal').textContent = tqScore.toFixed(2);
+  redraw();
+});
+
+['statMk','statCm','statBp'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', () => {
+    const mk = parseInt(document.getElementById('statMk').value) || 75;
+    const cm = parseInt(document.getElementById('statCm').value) || 75;
+    const bp = parseInt(document.getElementById('statBp').value) || 75;
+    tacklerStats = {mk, cm, bp};
+    updateStatsChips();
+    redraw();
+  });
+});
+
+function updateStatsChips() {
+  const chips = document.getElementById('statsChips');
+  if(!tacklerStats) { chips.innerHTML = ''; return; }
+  const mk_n = ((tacklerStats.mk - 51) / 49).toFixed(2);
+  const cm_n = ((tacklerStats.cm - 51) / 49).toFixed(2);
+  const bp_n = ((tacklerStats.bp - 51) / 49).toFixed(2);
+  chips.innerHTML = `
+    <span class="stat-chip">Mk ${tacklerStats.mk} (n:${mk_n})</span>
+    <span class="stat-chip">Cm ${tacklerStats.cm} (n:${cm_n})</span>
+    <span class="stat-chip">BP ${tacklerStats.bp} (n:${bp_n})</span>`;
+}
+
+// ─── API: Load Characters ─────────────────────────────────────────────────────
+async function loadCharacters() {
+  try {
+    const res = await fetch('/api/characters?env=th&fields=marking,composure,blockPass,defensiveAwareness', {signal: AbortSignal.timeout(3000)});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const chars = Array.isArray(data) ? data : (data.characters || data.data || []);
+    const sel = document.getElementById('tacklerSel');
+    sel.innerHTML = '<option value="">-- 선택 안 함 --</option>';
+    chars.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = JSON.stringify({mk: c.marking||75, cm: c.composure||75, bp: c.blockPass||75});
+      opt.textContent = c.name || c.id;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => {
+      if(!sel.value) { tacklerStats = null; document.getElementById('manualStats').style.display = 'none'; }
+      else {
+        tacklerStats = JSON.parse(sel.value);
+        document.getElementById('manualStats').style.display = 'none';
+      }
+      updateStatsChips();
+      redraw();
+    });
+  } catch(err) {
+    const sel = document.getElementById('tacklerSel');
+    sel.innerHTML = '<option value="">-- API 연결 실패 (수동 입력) --</option>';
+    sel.disabled = true;
+    document.getElementById('manualStats').style.display = 'block';
+    tacklerStats = {mk:75, cm:75, bp:75};
+    updateStatsChips();
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildVarGrid();
+updateAddButtons();
+loadCharacters();
+redraw();
+</script>
+</body>
+</html>

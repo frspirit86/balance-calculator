@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<title>Run Simulation Dashboard</title>
+<script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.07);--bdh:rgba(255,255,255,0.12);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.08);--gn:#34d399;--yl:#fbbf24;--rd:#f87171;--bl:#60a5fa;--r:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:600} header h1 span{color:var(--tx3);font-weight:400;margin-left:8px}
+  select.env-sel{background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer}
+  nav{display:flex;gap:2px;padding:8px 32px;border-bottom:1px solid var(--bd);background:var(--sf)}
+  nav a{color:var(--tx3);text-decoration:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+  nav a:hover{color:var(--tx2);background:var(--sf2)} nav a.active{color:var(--tx);background:var(--sf2)}
+  .container{max-width:1600px;margin:0 auto;padding:24px 32px}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+  .card-hd{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bd)}
+  .card-hd h2{font-size:14px;font-weight:600}
+  .tag{font-size:11px;color:var(--tx3);background:var(--bg);padding:3px 10px;border-radius:6px;font-weight:500}
+  .toggle{display:flex;align-items:center;gap:8px;margin-left:auto;cursor:pointer;font-size:12px;user-select:none}
+  .toggle input{display:none}
+  .tslider{width:36px;height:20px;background:var(--sf2);border-radius:10px;position:relative;transition:background .2s}
+  .tslider::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--tx3);border-radius:50%;transition:all .2s}
+  .toggle input:checked+.tslider{background:var(--ac)}
+  .toggle input:checked+.tslider::after{left:18px;background:#fff}
+  .tlabel{color:var(--tx2);font-weight:500}
+  .main-layout{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+  /* Canvas */
+  #fieldCanvas{display:block;cursor:crosshair;border-radius:8px;border:1px solid var(--bd)}
+  .canvas-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+  .canvas-card .card-hd{padding:12px 16px}
+  .canvas-wrap{padding:12px;background:var(--bg)}
+  /* Controls */
+  .ctrl-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+  .ctrl-section{padding:14px 16px;border-bottom:1px solid var(--bd)}
+  .ctrl-section:last-child{border-bottom:none}
+  .ctrl-label{font-size:11px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
+  .char-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .char-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+  .char-sel{flex:1;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .char-sel:focus{outline:none;border-color:var(--ac)}
+  .mode-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
+  .mode-btn{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx3);cursor:pointer;transition:all .15s}
+  .mode-btn:hover{border-color:var(--bdh);color:var(--tx2)}
+  .mode-btn.active{border-color:rgba(129,140,248,0.4);background:var(--acbg);color:var(--ac)}
+  .stat-mini{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}
+  .stat-mini-item{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:11px}
+  .stat-mini-item .k{color:var(--tx3);margin-bottom:2px}
+  .stat-mini-item .v{font-weight:700;font-variant-numeric:tabular-nums}
+  .phys-mini{margin-top:6px;padding:8px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;font-size:11px;line-height:1.8;font-family:Consolas,monospace}
+  .phys-mini .pk{color:var(--tx3)} .phys-mini .pv{color:var(--tx);font-weight:700}
+  /* Run button */
+  .run-btn-wrap{padding:12px 16px}
+  .run-btn{width:100%;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit}
+  .run-btn.ready{background:var(--ac);color:#fff}
+  .run-btn.ready:hover{background:#6366f1}
+  .run-btn.running{background:rgba(248,113,113,0.15);color:var(--rd);border:1px solid rgba(248,113,113,0.3)}
+  /* Result */
+  .result-box{margin:0 16px 16px;padding:12px 16px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);font-size:13px;min-height:60px;transition:all .3s}
+  .result-box.win-a{border-color:rgba(96,165,250,0.4);background:rgba(96,165,250,0.06)}
+  .result-box.win-b{border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.06)}
+  .result-box .rw{font-size:16px;font-weight:700;margin-bottom:4px}
+  .result-box .rw.a{color:var(--bl)} .result-box .rw.b{color:var(--rd)}
+  .result-box .rd{font-size:12px;color:var(--tx2);line-height:1.6}
+  /* Desmos */
+  .desmos-wrap{height:300px;background:var(--bg)}
+  /* GlobalConst collapsible */
+  .coll-hd{padding:12px 20px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bd)}
+  .coll-hd:hover{background:rgba(255,255,255,0.02)}
+  .coll-arr{font-size:11px;color:var(--tx3);margin-left:auto;transition:transform .2s}
+  .coll-arr.open{transform:rotate(180deg)}
+  .coll-body{display:none}
+  .coll-body.open{display:block}
+  .gc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;padding:16px}
+  .gc-item{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+  .gc-item .gck{font-size:10px;color:var(--tx3);font-family:Consolas,monospace}
+  .gc-item .gcv-row{display:flex;align-items:center;gap:6px}
+  .gc-item input[type=range]{flex:1;accent-color:var(--ac);height:4px}
+  .gc-item .gcv{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;min-width:52px;text-align:right;color:var(--tx)}
+  .gc-item .gcv.changed{color:var(--yl)}
+  .sr{display:flex;gap:8px;padding:8px 14px;border-top:1px solid var(--bd)}
+  .sb{font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;transition:all .15s;font-family:inherit}
+  .sb.p{color:#fff;background:var(--ac);border-color:var(--ac)} .sb.p:hover{background:#6366f1}
+  .sb.s{color:var(--tx2);background:var(--sf2)} .sb.s:hover{color:var(--tx);border-color:var(--bdh)}
+  .git-btn{border-color:rgba(251,191,36,0.3)!important;color:var(--yl)!important}
+  .toast{position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+  /* Legend */
+  .legend{display:flex;gap:12px;padding:8px 12px;font-size:11px;color:var(--tx3)}
+  .legend-item{display:flex;align-items:center;gap:5px}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .legend-star{font-size:12px}
+  .fbtn{font-size:11px;color:var(--tx3);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:3px 10px;cursor:pointer}
+  .fbtn:hover{color:var(--tx2);border-color:var(--bdh)}
+  @media(max-width:1200px){.main-layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Run Simulation <span>Dashboard</span></h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:12px;color:var(--tx3)">환경:</span>
+    <select class="env-sel" id="envSel" onchange="onEnvChange()"></select>
+  </div>
+</header>
+<nav>
+  <a href="graph_defence.html">Defence</a>
+  <a href="graph_target.html">타겟 선정</a>
+  <a href="graph_gk.html">GK</a>
+  <a class="active" href="graph_run.html">Run</a>
+  <a href="graph_pass.html">Pass</a>
+</nav>
+
+<div class="container">
+  <div class="main-layout">
+    <!-- LEFT: Field Canvas -->
+    <div>
+      <div class="canvas-card">
+        <div class="card-hd" style="padding:10px 14px">
+          <h2>Field Simulation</h2>
+          <span class="tag">드래그로 위치 설정</span>
+          <button class="fbtn" style="margin-left:auto" onclick="resetPositions()">위치 초기화</button>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div><span id="legendA">A</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div><span id="legendB">B</span></div>
+          <div class="legend-item"><div class="legend-star">★</div><span>목표 지점</span></div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="fieldCanvas" width="840" height="544"></canvas>
+        </div>
+        <div class="run-btn-wrap">
+          <button class="run-btn ready" id="runBtn" onclick="onRunClick()">▶ Run 시뮬레이션 시작</button>
+        </div>
+      </div>
+      <!-- Desmos graph -->
+      <div class="card">
+        <div class="card-hd"><h2>속도 곡선</h2><span class="tag">Speed vs Time (m/s)</span></div>
+        <div class="desmos-wrap" id="desmosDiv"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Controls -->
+    <div>
+      <div class="ctrl-card">
+        <!-- Character A -->
+        <div class="ctrl-section">
+          <div class="ctrl-label" style="color:var(--bl)">■ Character A (파랑)</div>
+          <div class="char-row">
+            <div class="char-dot" style="background:#60a5fa"></div>
+            <select class="char-sel" id="selA" onchange="onCharChange('A')">
+              <option value="">캐릭터 선택...</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <div class="ctrl-label" style="margin:0;white-space:nowrap">런 타입</div>
+            <select class="char-sel" id="rtypeA" onchange="onRunTypeChange('A')" style="flex:1">
+              <option value="explosive">폭발형 (explosive)</option>
+              <option value="agile">회전형 (agile)</option>
+              <option value="lengthy">거리형 (lengthy)</option>
+              <option value="normal" selected>일반형 (normal)</option>
+            </select>
+          </div>
+          <div id="rtypeBadgeA" style="display:none;font-size:10px;color:var(--gn);margin-top:3px;padding-left:2px"></div>
+          <div class="ctrl-label" style="margin-top:10px">Run 모드</div>
+          <div class="mode-row" id="modeA">
+            <button class="mode-btn" data-mode="normal" onclick="setMode('A','normal')">Normal</button>
+            <button class="mode-btn active" data-mode="dash" onclick="setMode('A','dash')">Dash</button>
+            <button class="mode-btn" data-mode="runs_normal" onclick="setMode('A','runs_normal')">Runs Normal</button>
+            <button class="mode-btn" data-mode="runs_mark" onclick="setMode('A','runs_mark')">Runs Mark</button>
+          </div>
+          <div class="stat-mini" id="statsA">
+            <div class="stat-mini-item"><div class="k">Speed</div><div class="v" id="sA-spd">—</div></div>
+            <div class="stat-mini-item"><div class="k">Acceleration</div><div class="v" id="sA-acc">—</div></div>
+          </div>
+          <div class="phys-mini" id="physA">
+            <span class="pk">MaxSpd: </span><span class="pv" id="pA-spd">—</span> m/s &nbsp;
+            <span class="pk">Acc: </span><span class="pv" id="pA-acc">—</span> m/s²
+          </div>
+        </div>
+        <!-- Character B -->
+        <div class="ctrl-section">
+          <div class="ctrl-label" style="color:var(--rd)">■ Character B (빨강)</div>
+          <div class="char-row">
+            <div class="char-dot" style="background:#f87171"></div>
+            <select class="char-sel" id="selB" onchange="onCharChange('B')">
+              <option value="">캐릭터 선택...</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <div class="ctrl-label" style="margin:0;white-space:nowrap">런 타입</div>
+            <select class="char-sel" id="rtypeB" onchange="onRunTypeChange('B')" style="flex:1">
+              <option value="explosive">폭발형 (explosive)</option>
+              <option value="agile">회전형 (agile)</option>
+              <option value="lengthy">거리형 (lengthy)</option>
+              <option value="normal" selected>일반형 (normal)</option>
+            </select>
+          </div>
+          <div id="rtypeBadgeB" style="display:none;font-size:10px;color:var(--gn);margin-top:3px;padding-left:2px"></div>
+          <div class="ctrl-label" style="margin-top:10px">Run 모드</div>
+          <div class="mode-row" id="modeB">
+            <button class="mode-btn" data-mode="normal" onclick="setMode('B','normal')">Normal</button>
+            <button class="mode-btn active" data-mode="dash" onclick="setMode('B','dash')">Dash</button>
+            <button class="mode-btn" data-mode="runs_normal" onclick="setMode('B','runs_normal')">Runs Normal</button>
+            <button class="mode-btn" data-mode="runs_mark" onclick="setMode('B','runs_mark')">Runs Mark</button>
+          </div>
+          <div class="stat-mini">
+            <div class="stat-mini-item"><div class="k">Speed</div><div class="v" id="sB-spd">—</div></div>
+            <div class="stat-mini-item"><div class="k">Acceleration</div><div class="v" id="sB-acc">—</div></div>
+          </div>
+          <div class="phys-mini" id="physB">
+            <span class="pk">MaxSpd: </span><span class="pv" id="pB-spd">—</span> m/s &nbsp;
+            <span class="pk">Acc: </span><span class="pv" id="pB-acc">—</span> m/s²
+          </div>
+        </div>
+        <!-- Filter toggle -->
+        <div class="ctrl-section" style="padding:10px 16px">
+          <label class="toggle" style="margin-left:0;justify-content:flex-start">
+            <input type="checkbox" id="activeToggle" checked onchange="refreshCharLists()">
+            <span class="tslider"></span>
+            <span class="tlabel">서비스 캐릭터만</span>
+          </label>
+        </div>
+        <!-- Result -->
+        <div class="ctrl-section">
+          <div class="ctrl-label">시뮬레이션 결과</div>
+          <div class="result-box" id="resultBox">
+            <div style="color:var(--tx3);font-size:12px">Run 버튼을 눌러 시뮬레이션을 시작하세요.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GlobalConst sliders -->
+      <div class="card">
+        <div class="coll-hd" onclick="toggleColl(this)">
+          <h2 style="font-size:14px;font-weight:600">GlobalConstRun 파라미터</h2>
+          <span class="tag">GlobalConstRun.json</span>
+          <span class="coll-arr">▼</span>
+        </div>
+        <div class="coll-body">
+          <div class="gc-grid" id="gcGrid"></div>
+          <div class="sr">
+            <button class="sb s" onclick="reloadGC()">↺ 다시 로드</button>
+            <button class="sb p" onclick="saveGC()">저장</button>
+            <button class="sb s git-btn" onclick="gitCommit()">Git Commit</button>
+            <button class="sb s git-btn" onclick="gitPush()">Push</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+const JFILE = 'GlobalConstRun';
+const SCALE = 8;   // px per meter
+const W_M = 105, H_M = 68;
+const CW = W_M * SCALE, CH = H_M * SCALE; // 840, 544
+
+// px ↔ meters
+const fx = mx => (mx + 52.5) * SCALE;
+const fy = my => (34 - my) * SCALE;
+const mx = cx => cx / SCALE - 52.5;
+const my = cy => 34 - cy / SCALE;
+
+// State
+let gc = {};          // GlobalConstRun values
+let gcOrig = {};      // original loaded values
+let chars = [];       // all characters
+let charA = null, charB = null;
+let modeA = 'dash', modeB = 'dash';
+let runTypeA = 'normal', runTypeB = 'normal';
+let posA = { x: -20, y: 10 };
+let posB = { x: -20, y: -10 };
+let posTarget = { x: 20, y: 0 };
+let dragging = null;  // 'A' | 'B' | 'T'
+let simRunning = false;
+let simA = null, simB = null;
+let animReq = null;
+let calc = null;
+let env = 'th';
+let writeToken = '';
+let writeProtected = null; // null=미확인, true/false
+
+// GC slider config: [key, min, max, step, label]
+const GC_SLIDERS = [
+  ['run_Forward_Spd_Default', 600, 1200, 10, '전방 기본 속도 (cm/s)'],
+  ['run_Normal_Spd_Ratio', 0.4, 1.0, 0.01, 'Normal 속도 비율'],
+  ['run_Dash_Spd_Ratio', 0.8, 1.2, 0.01, 'Dash 속도 비율'],
+  ['run_Side_Spd_Ratio', 0.3, 0.8, 0.01, 'Runs 속도 비율'],
+  ['run_Front_Acc_Default', 1000, 6000, 100, '전방 기본 가속도 (cm/s²)'],
+  ['run_Front_Acc_Weight', 0.1, 1.0, 0.05, '가속도 스탯 가중치'],
+  ['run_Side_Acc_Default', 2000, 8000, 100, 'Runs Normal 가속도 (cm/s²)'],
+  ['run_Mark_Acc_Default', 2000, 9000, 100, 'Runs Mark 가속도 (cm/s²)'],
+  ['commonStat_Max', 100, 150, 1, '스탯 최대값'],
+];
+
+// DynamicsStyle extracted from CharacterStat.uasset binary
+const RUN_TYPES = {
+  Sanchez:'explosive', Swift:'explosive',
+  Jelly:'agile', Amazon:'agile', Jack:'agile', Gunner:'agile',
+  Mukamba:'lengthy', Spider:'lengthy', Hercules:'lengthy', Warmachine:'lengthy',
+  Butter:'normal', Luke:'normal', Rose:'normal', Gray:'normal', Qri:'normal',
+  Hakan:'normal', Drekar:'normal', Chris:'normal', Miyoung20:'normal', Miyoung40:'normal',
+};
+const RUN_TYPE_LABEL = { explosive:'폭발형', agile:'회전형', lengthy:'거리형', normal:'일반형' };
+
+// ─── Initialization ───────────────────────────────────────────────
+
+async function init() {
+  await loadConfig();
+  await Promise.all([loadChars(), loadGC()]);
+  initCanvas();
+  initDesmos();
+}
+
+async function loadConfig() {
+  try {
+    const r = await fetch(`${API}/config`);
+    const d = await r.json();
+    env = d.default_env || 'th';
+    const envSel = document.getElementById('envSel');
+    (d.environments || [env]).forEach(e => {
+      const o = document.createElement('option');
+      o.value = e; o.text = e;
+      if (e === env) o.selected = true;
+      envSel.appendChild(o);
+    });
+  } catch(e) { console.warn('config load failed', e); }
+}
+
+async function loadChars() {
+  try {
+    const r = await fetch(`${API}/characters?env=${env}`);
+    if (!r.ok) { showToast(`캐릭터 로드 실패: HTTP ${r.status}`, 'err'); return; }
+    const d = await r.json();
+    if (d.error) { showToast(`캐릭터 오류: ${d.error}`, 'err'); return; }
+    chars = d.characters || [];
+    if (chars.length === 0) showToast('캐릭터 데이터 없음 (빈 응답)', 'err');
+    refreshCharLists();
+  } catch(e) {
+    showToast(`캐릭터 로드 예외: ${e.message}`, 'err');
+    console.error('chars load failed', e);
+  }
+}
+
+async function loadGC() {
+  try {
+    const r = await fetch(`${API}/load?file=${JFILE}&env=${env}`);
+    const d = await r.json();
+    gc = d.data || {};
+    gcOrig = JSON.parse(JSON.stringify(gc));
+    renderGCSliders();
+    updatePhysics();
+  } catch(e) { console.warn('GC load failed', e); }
+}
+
+async function reloadGC() {
+  await loadGC();
+  showToast('다시 로드됨', 'ok');
+}
+
+async function getWriteToken() {
+  if (writeToken) return writeToken;
+  if (writeProtected === null) {
+    try {
+      const r = await fetch(`${API}/writable`);
+      const d = await r.json();
+      writeProtected = d.protected || false;
+    } catch(e) { writeProtected = false; }
+  }
+  if (writeProtected) writeToken = prompt('쓰기 토큰 입력:') || '';
+  return writeToken;
+}
+
+function onEnvChange() {
+  env = document.getElementById('envSel').value;
+  Promise.all([loadChars(), loadGC()]);
+}
+
+// ─── Character Lists ───────────────────────────────────────────────
+
+function refreshCharLists() {
+  const activeOnly = document.getElementById('activeToggle').checked;
+  const active = chars.filter(c => c.active);
+  // 서비스 캐릭터가 없으면 전체 표시
+  const filtered = (activeOnly && active.length > 0) ? active : chars;
+  const prevA = document.getElementById('selA').value;
+  const prevB = document.getElementById('selB').value;
+  ['selA', 'selB'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">캐릭터 선택...</option>';
+    filtered.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.name; o.text = c.name;
+      sel.appendChild(o);
+    });
+  });
+  document.getElementById('selA').value = prevA;
+  document.getElementById('selB').value = prevB;
+  onCharChange('A');
+  onCharChange('B');
+}
+
+function onCharChange(side) {
+  const name = document.getElementById('sel' + side).value;
+  const c = chars.find(x => x.name === name) || null;
+  if (side === 'A') charA = c;
+  else charB = c;
+
+  // Auto-detect run type from uasset mapping
+  if (c && RUN_TYPES[c.name]) {
+    const detected = RUN_TYPES[c.name];
+    document.getElementById('rtype' + side).value = detected;
+    if (side === 'A') runTypeA = detected;
+    else runTypeB = detected;
+    const badge = document.getElementById('rtypeBadge' + side);
+    if (badge) { badge.textContent = '자동 감지: ' + RUN_TYPE_LABEL[detected]; badge.style.display = ''; }
+  } else {
+    const badge = document.getElementById('rtypeBadge' + side);
+    if (badge) badge.style.display = 'none';
+  }
+
+  updateStatDisplay(side, c);
+  updatePhysics();
+  updateLegend();
+  drawField();
+}
+
+function updateLegend() {
+  document.getElementById('legendA').textContent = charA ? charA.name : 'A';
+  document.getElementById('legendB').textContent = charB ? charB.name : 'B';
+}
+
+function updateStatDisplay(side, c) {
+  document.getElementById('s' + side + '-spd').textContent = c ? c.speed : '—';
+  document.getElementById('s' + side + '-acc').textContent = c ? c.acceleration : '—';
+}
+
+// ─── Run Mode ──────────────────────────────────────────────────────
+
+function setMode(side, mode) {
+  if (side === 'A') modeA = mode;
+  else modeB = mode;
+  document.querySelectorAll(`#mode${side} .mode-btn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  updatePhysics();
+}
+
+function onRunTypeChange(side) {
+  if (side === 'A') runTypeA = document.getElementById('rtypeA').value;
+  else runTypeB = document.getElementById('rtypeB').value;
+  updatePhysics();
+}
+
+// ─── Physics ────────────────────────────────────────────────────────
+
+function computePhysics(char, mode, runType) {
+  if (!char || !gc.run_Forward_Spd_Default) return { maxSpd: 0, acc: 0 };
+  const statSpd = char.speed / (gc.commonStat_Max || 125);
+  const statAcc = char.acceleration / (gc.commonStat_Max || 125);
+  const t = runType || 'normal'; // 'explosive' | 'agile' | 'lengthy' | 'normal'
+
+  let maxSpd, accBase;
+  const fwdBase = (gc.run_Forward_Spd_Default || 900) / 100; // cm/s → m/s
+
+  // Run type specific scales
+  const spdMod = gc[`${t}_MaxSpeedModifier_Ratio`] || 1.0;
+  const accelThreshold = gc[`${t}_LinearAccel_SpeedThreshold`] || 0.6;
+  const accelSlowScale = gc[`${t}_LinearAccel_SlowSpeedScale`] || 0.67;
+  const accelFastScale = gc[`${t}_LinearAccel_FastSpeedScale`] || 0.40;
+
+  if (mode === 'normal') {
+    maxSpd = fwdBase * statSpd * (gc.run_Normal_Spd_Ratio || 0.68) * spdMod;
+    accBase = (gc.run_Front_Acc_Default || 3000) / 100;
+  } else if (mode === 'dash') {
+    maxSpd = fwdBase * statSpd * (gc.run_Dash_Spd_Ratio || 1.0) * spdMod;
+    accBase = (gc.run_Front_Acc_Default || 3000) / 100;
+  } else if (mode === 'runs_normal') {
+    maxSpd = fwdBase * statSpd * (gc.run_Side_Spd_Ratio || 0.55) * spdMod;
+    accBase = (gc.run_Side_Acc_Default || 5000) / 100;
+  } else { // runs_mark
+    maxSpd = fwdBase * statSpd * (gc.run_Side_Spd_Ratio || 0.55) * 0.92 * spdMod;
+    accBase = (gc.run_Mark_Acc_Default || 6500) / 100;
+  }
+
+  // Stat influence: acc scales between (1-weight) and 1.0 based on stat
+  const w = gc.run_Front_Acc_Weight || 0.5;
+  const accMult = (1 - w) + w * statAcc;
+  const acc = accBase * accMult;
+
+  return { maxSpd, acc, accelThreshold, accelSlowScale, accelFastScale };
+}
+
+function updatePhysics() {
+  const pA = computePhysics(charA, modeA, runTypeA);
+  const pB = computePhysics(charB, modeB, runTypeB);
+  document.getElementById('pA-spd').textContent = pA.maxSpd.toFixed(2);
+  document.getElementById('pA-acc').textContent = pA.acc.toFixed(1);
+  document.getElementById('pB-spd').textContent = pB.maxSpd.toFixed(2);
+  document.getElementById('pB-acc').textContent = pB.acc.toFixed(1);
+  updateDesmos(pA, pB);
+}
+
+// ─── Canvas ─────────────────────────────────────────────────────────
+
+function initCanvas() {
+  const canvas = document.getElementById('fieldCanvas');
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('mouseleave', onMouseUp);
+  resetPositions();
+}
+
+function resetPositions() {
+  posA = { x: -20, y: 10 };
+  posB = { x: -20, y: -10 };
+  posTarget = { x: 20, y: 0 };
+  drawField();
+}
+
+function getCanvasPos(e) {
+  const r = e.target.getBoundingClientRect();
+  return { cx: e.clientX - r.left, cy: e.clientY - r.top };
+}
+
+function hitRadius(cx, cy, pos, r) {
+  const dx = cx - fx(pos.x), dy = cy - fy(pos.y);
+  return Math.sqrt(dx*dx + dy*dy) < r;
+}
+
+function onMouseDown(e) {
+  if (simRunning) return;
+  const { cx, cy } = getCanvasPos(e);
+  if (hitRadius(cx, cy, posA, 14)) dragging = 'A';
+  else if (hitRadius(cx, cy, posB, 14)) dragging = 'B';
+  else if (hitRadius(cx, cy, posTarget, 18)) dragging = 'T';
+}
+
+function onMouseMove(e) {
+  if (!dragging) return;
+  const { cx, cy } = getCanvasPos(e);
+  const nmx = Math.max(-52.5, Math.min(52.5, mx(cx)));
+  const nmy = Math.max(-34, Math.min(34, my(cy)));
+  if (dragging === 'A') posA = { x: nmx, y: nmy };
+  else if (dragging === 'B') posB = { x: nmx, y: nmy };
+  else posTarget = { x: nmx, y: nmy };
+  drawField();
+}
+
+function onMouseUp() { dragging = null; }
+
+function drawField(simStateA, simStateB) {
+  const canvas = document.getElementById('fieldCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Field background
+  ctx.fillStyle = '#1a4a2e';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Stripe pattern
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+    ctx.fillRect(i * (CW / 7), 0, CW / 7, CH);
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+
+  // Outer boundary
+  ctx.strokeRect(0, 0, CW, CH);
+
+  // Center line
+  ctx.beginPath(); ctx.moveTo(CW/2, 0); ctx.lineTo(CW/2, CH); ctx.stroke();
+
+  // Center circle (r=9.15m)
+  ctx.beginPath(); ctx.arc(CW/2, CH/2, 9.15*SCALE, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath(); ctx.arc(CW/2, CH/2, 2, 0, Math.PI*2); ctx.fill();
+
+  // Penalty areas (16.5m × 40.32m each side)
+  const pa = 16.5*SCALE, pw = 40.32*SCALE;
+  ctx.strokeRect(0, (CH-pw)/2, pa, pw);
+  ctx.strokeRect(CW-pa, (CH-pw)/2, pa, pw);
+
+  // Goal areas (5.5m × 18.32m)
+  const ga = 5.5*SCALE, gw = 18.32*SCALE;
+  ctx.strokeRect(0, (CH-gw)/2, ga, gw);
+  ctx.strokeRect(CW-ga, (CH-gw)/2, ga, gw);
+
+  // Goals
+  const goalH = 7.32*SCALE, goalD = 2.4*SCALE;
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.strokeRect(-goalD, (CH-goalH)/2, goalD, goalH);
+  ctx.strokeRect(CW, (CH-goalH)/2, goalD, goalH);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+
+  // Draw trajectory lines when sim done
+  if (simStateA && simStateA.trail && simStateA.trail.length > 1) {
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(96,165,250,0.5)';
+    ctx.lineWidth = 1.5;
+    simStateA.trail.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(fx(p.x), fy(p.y));
+      else ctx.lineTo(fx(p.x), fy(p.y));
+    });
+    ctx.stroke();
+  }
+  if (simStateB && simStateB.trail && simStateB.trail.length > 1) {
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(248,113,113,0.5)';
+    ctx.lineWidth = 1.5;
+    simStateB.trail.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(fx(p.x), fy(p.y));
+      else ctx.lineTo(fx(p.x), fy(p.y));
+    });
+    ctx.stroke();
+  }
+
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+
+  // Draw target
+  const tx2 = fx(posTarget.x), ty2 = fy(posTarget.y);
+  drawStar(ctx, tx2, ty2, 12, '#fbbf24', 'rgba(251,191,36,0.2)');
+
+  // Current positions for animated chars
+  const curA = simStateA ? simStateA : { x: posA.x, y: posA.y };
+  const curB = simStateB ? simStateB : { x: posB.x, y: posB.y };
+  const aIsDone = simStateA && simStateA.done;
+  const bIsDone = simStateB && simStateB.done;
+
+  drawCharDot(ctx, fx(curA.x), fy(curA.y), 12, '#60a5fa',
+    aIsDone ? 'rgba(96,165,250,0.15)' : 'rgba(96,165,250,0.25)',
+    charA ? charA.name[0] : 'A');
+  drawCharDot(ctx, fx(curB.x), fy(curB.y), 12, '#f87171',
+    bIsDone ? 'rgba(248,113,113,0.15)' : 'rgba(248,113,113,0.25)',
+    charB ? charB.name[0] : 'B');
+}
+
+function drawStar(ctx, x, y, r, stroke, fill) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a1 = (i * 4 * Math.PI / 5) - Math.PI/2;
+    const a2 = ((i * 4 + 2) * Math.PI / 5) - Math.PI/2;
+    if (i === 0) ctx.moveTo(x + r * Math.cos(a1), y + r * Math.sin(a1));
+    else ctx.lineTo(x + r * Math.cos(a1), y + r * Math.sin(a1));
+    ctx.lineTo(x + r/2 * Math.cos(a2), y + r/2 * Math.sin(a2));
+  }
+  ctx.closePath();
+  ctx.fillStyle = fill; ctx.fill();
+  ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke();
+}
+
+function drawCharDot(ctx, x, y, r, stroke, fill, label) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = fill; ctx.fill();
+  ctx.strokeStyle = stroke; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Inter,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
+}
+
+// ─── Simulation ─────────────────────────────────────────────────────
+
+function onRunClick() {
+  if (simRunning) { stopSim(); return; }
+  if (!charA && !charB) { showToast('캐릭터를 선택하세요', 'err'); return; }
+  startSim();
+}
+
+function startSim() {
+  const pA = computePhysics(charA, modeA, runTypeA);
+  const pB = computePhysics(charB, modeB, runTypeB);
+
+  simA = {
+    x: posA.x, y: posA.y,
+    spd: 0, maxSpd: pA.maxSpd, acc: pA.acc,
+    accelThreshold: pA.accelThreshold, accelSlowScale: pA.accelSlowScale, accelFastScale: pA.accelFastScale,
+    t: 0, done: false, trail: [{ x: posA.x, y: posA.y }]
+  };
+  simB = {
+    x: posB.x, y: posB.y,
+    spd: 0, maxSpd: pB.maxSpd, acc: pB.acc,
+    accelThreshold: pB.accelThreshold, accelSlowScale: pB.accelSlowScale, accelFastScale: pB.accelFastScale,
+    t: 0, done: false, trail: [{ x: posB.x, y: posB.y }]
+  };
+
+  simRunning = true;
+  document.getElementById('runBtn').textContent = '■ 중지';
+  document.getElementById('runBtn').className = 'run-btn running';
+  document.getElementById('resultBox').className = 'result-box';
+  document.getElementById('resultBox').innerHTML = '<div style="color:var(--tx3);font-size:12px">시뮬레이션 진행 중...</div>';
+
+  if (animReq) cancelAnimationFrame(animReq);
+  animReq = requestAnimationFrame(animTick);
+}
+
+const TRAIL_EVERY = 3; // record trail every N frames
+let frameCount = 0;
+
+function animTick() {
+  const dt = 1/60;
+  frameCount++;
+
+  if (!simA.done) {
+    tickChar(simA, posTarget, dt);
+    if (frameCount % TRAIL_EVERY === 0) simA.trail.push({ x: simA.x, y: simA.y });
+  }
+  if (!simB.done) {
+    tickChar(simB, posTarget, dt);
+    if (frameCount % TRAIL_EVERY === 0) simB.trail.push({ x: simB.x, y: simB.y });
+  }
+
+  drawField(simA, simB);
+
+  const anyDone = simA.done || simB.done;
+  const timeout = simA.t > 30 || simB.t > 30;
+
+  if (!anyDone && !timeout) {
+    animReq = requestAnimationFrame(animTick);
+  } else {
+    simRunning = false;
+    document.getElementById('runBtn').textContent = '▶ 다시 실행';
+    document.getElementById('runBtn').className = 'run-btn ready';
+    showResult();
+  }
+}
+
+function tickChar(s, target, dt) {
+  const dx = target.x - s.x, dy = target.y - s.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist < 0.15) { s.done = true; return; }
+
+  const spdRatio = s.maxSpd > 0 ? s.spd / s.maxSpd : 0;
+  const scale = spdRatio < s.accelThreshold ? s.accelSlowScale : s.accelFastScale;
+  s.spd = Math.min(s.spd + s.acc * scale * dt, s.maxSpd);
+  const step = Math.min(s.spd * dt, dist);
+  s.x += dx / dist * step;
+  s.y += dy / dist * step;
+  s.t += dt;
+}
+
+function stopSim() {
+  simRunning = false;
+  if (animReq) { cancelAnimationFrame(animReq); animReq = null; }
+  document.getElementById('runBtn').textContent = '▶ Run 시뮬레이션 시작';
+  document.getElementById('runBtn').className = 'run-btn ready';
+  drawField();
+}
+
+function showResult() {
+  if (!simA || !simB) return;
+  const box = document.getElementById('resultBox');
+  const nameA = charA ? charA.name : 'A';
+  const nameB = charB ? charB.name : 'B';
+  const tA = simA.t, tB = simB.t;
+  const distA = Math.sqrt((simA.x - posTarget.x)**2 + (simA.y - posTarget.y)**2);
+  const distB = Math.sqrt((simB.x - posTarget.x)**2 + (simB.y - posTarget.y)**2);
+  const aArrived = distA < 0.15, bArrived = distB < 0.15;
+
+  let winnerHTML, winClass;
+  if (aArrived && bArrived) {
+    const diff = Math.abs(tA - tB);
+    if (tA < tB - 0.01) {
+      winClass = 'win-a';
+      winnerHTML = `<div class="rw a">🏆 ${nameA} 먼저 도착!</div><div class="rd">${nameA}: ${tA.toFixed(2)}s &nbsp;|&nbsp; ${nameB}: ${tB.toFixed(2)}s<br>차이: ${diff.toFixed(2)}s (${nameA}가 ${diff.toFixed(2)}s 빠름)</div>`;
+    } else if (tB < tA - 0.01) {
+      winClass = 'win-b';
+      winnerHTML = `<div class="rw b">🏆 ${nameB} 먼저 도착!</div><div class="rd">${nameA}: ${tA.toFixed(2)}s &nbsp;|&nbsp; ${nameB}: ${tB.toFixed(2)}s<br>차이: ${diff.toFixed(2)}s (${nameB}가 ${diff.toFixed(2)}s 빠름)</div>`;
+    } else {
+      winClass = '';
+      winnerHTML = `<div class="rw" style="color:var(--yl)">🤝 동시 도착</div><div class="rd">${nameA}: ${tA.toFixed(2)}s &nbsp;|&nbsp; ${nameB}: ${tB.toFixed(2)}s</div>`;
+    }
+  } else if (aArrived) {
+    winClass = 'win-a';
+    winnerHTML = `<div class="rw a">🏆 ${nameA} 먼저 도착!</div><div class="rd">${nameA}: ${tA.toFixed(2)}s &nbsp;|&nbsp; ${nameB}: 도달 못함</div>`;
+  } else if (bArrived) {
+    winClass = 'win-b';
+    winnerHTML = `<div class="rw b">🏆 ${nameB} 먼저 도착!</div><div class="rd">${nameA}: 도달 못함 &nbsp;|&nbsp; ${nameB}: ${tB.toFixed(2)}s</div>`;
+  } else {
+    winClass = '';
+    winnerHTML = `<div class="rw" style="color:var(--tx3)">제한 시간 초과</div><div class="rd">${nameA}: ${tA.toFixed(2)}s &nbsp;|&nbsp; ${nameB}: ${tB.toFixed(2)}s</div>`;
+  }
+
+  const pA = computePhysics(charA, modeA, runTypeA);
+  const pB = computePhysics(charB, modeB, runTypeB);
+  const distToTarget = Math.sqrt((posA.x - posTarget.x)**2 + (posA.y - posTarget.y)**2);
+  winnerHTML += `<div class="rd" style="margin-top:6px;color:var(--tx3)">거리 ${distToTarget.toFixed(1)}m &nbsp;|&nbsp; A: ${pA.maxSpd.toFixed(2)}m/s / ${pA.acc.toFixed(1)}m/s² &nbsp;|&nbsp; B: ${pB.maxSpd.toFixed(2)}m/s / ${pB.acc.toFixed(1)}m/s²</div>`;
+
+  box.className = 'result-box ' + winClass;
+  box.innerHTML = winnerHTML;
+}
+
+// ─── Desmos ─────────────────────────────────────────────────────────
+
+function initDesmos() {
+  const el = document.getElementById('desmosDiv');
+  calc = Desmos.GraphingCalculator(el, {
+    expressions: false, settingsMenu: false, zoomButtons: false,
+    border: false, lockViewport: false,
+    backgroundColor: '#09090b'
+  });
+  calc.updateSettings({
+    showGrid: true, showXAxis: true, showYAxis: true
+  });
+  calc.setMathBounds({ left: -0.2, right: 8, bottom: -0.5, top: 12 });
+  updateDesmos({ maxSpd: 0, acc: 0 }, { maxSpd: 0, acc: 0 });
+}
+
+function updateDesmos(pA, pB) {
+  if (!calc) return;
+  const exps = [];
+
+  // Axis labels
+  exps.push({ id: 'ax', latex: 'x > 0', secret: true });
+
+  // CharA curve (blue)
+  if (pA.maxSpd > 0 && pA.acc > 0) {
+    const VA = pA.maxSpd.toFixed(4), AA = pA.acc.toFixed(4);
+    exps.push({
+      id: 'curveA',
+      latex: `\\min(${VA},\\ ${AA}\\cdot x)`,
+      color: '#60a5fa', lineWidth: 2.5,
+      label: charA ? charA.name : 'A', showLabel: true
+    });
+    exps.push({
+      id: 'vmaxA', latex: `y=${VA}`,
+      color: 'rgba(96,165,250,0.3)', lineStyle: Desmos.Styles.DASHED, lineWidth: 1
+    });
+  }
+
+  // CharB curve (red)
+  if (pB.maxSpd > 0 && pB.acc > 0) {
+    const VB = pB.maxSpd.toFixed(4), AB = pB.acc.toFixed(4);
+    exps.push({
+      id: 'curveB',
+      latex: `\\min(${VB},\\ ${AB}\\cdot x)`,
+      color: '#f87171', lineWidth: 2.5,
+      label: charB ? charB.name : 'B', showLabel: true
+    });
+    exps.push({
+      id: 'vmaxB', latex: `y=${VB}`,
+      color: 'rgba(248,113,113,0.3)', lineStyle: Desmos.Styles.DASHED, lineWidth: 1
+    });
+  }
+
+  calc.setExpressions(exps);
+
+  // Auto-scale y-axis
+  const maxV = Math.max(pA.maxSpd || 0, pB.maxSpd || 0, 1);
+  const maxAcc = Math.max(pA.acc || 0, pB.acc || 0, 1);
+  const tAtMax = maxV / (Math.max(maxAcc, 0.1));
+  calc.setMathBounds({ left: -0.2, right: Math.max(tAtMax * 2.5, 6), bottom: -0.3, top: maxV * 1.3 });
+}
+
+// ─── GlobalConst Sliders ─────────────────────────────────────────────
+
+function renderGCSliders() {
+  const grid = document.getElementById('gcGrid');
+  grid.innerHTML = '';
+  GC_SLIDERS.forEach(([key, min, max, step, label]) => {
+    const val = gc[key] !== undefined ? gc[key] : 0;
+    const div = document.createElement('div');
+    div.className = 'gc-item';
+    div.innerHTML = `
+      <div class="gck">${key}</div>
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:2px">${label}</div>
+      <div class="gcv-row">
+        <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+          id="sl_${key}" oninput="onSlider('${key}',this.value)">
+        <span class="gcv" id="gv_${key}">${formatGCVal(val)}</span>
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+function formatGCVal(v) {
+  return typeof v === 'number' ? (v % 1 === 0 ? v.toString() : parseFloat(v.toFixed(4)).toString()) : v;
+}
+
+function onSlider(key, val) {
+  const numVal = parseFloat(val);
+  gc[key] = numVal;
+  const el = document.getElementById('gv_' + key);
+  el.textContent = formatGCVal(numVal);
+  el.className = 'gcv' + (gcOrig[key] !== numVal ? ' changed' : '');
+  updatePhysics();
+}
+
+async function saveGC() {
+  const patch = {};
+  GC_SLIDERS.forEach(([key]) => { if (gc[key] !== gcOrig[key]) patch[key] = gc[key]; });
+  if (!Object.keys(patch).length) { showToast('변경 없음', 'ok'); return; }
+  const token = await getWriteToken();
+  try {
+    const r = await fetch(`${API}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Write-Token': token },
+      body: JSON.stringify({ file: JFILE, env, patch })
+    });
+    const d = await r.json();
+    if (d.ok) { gcOrig = JSON.parse(JSON.stringify(gc)); renderGCSliders(); showToast('저장 완료', 'ok'); }
+    else showToast(d.error || '저장 실패', 'err');
+  } catch(e) { showToast('저장 오류', 'err'); }
+}
+
+async function gitCommit() {
+  const token = await getWriteToken();
+  try {
+    const r = await fetch(`${API}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Write-Token': token },
+      body: JSON.stringify({ action: 'commit', env, message: `balance: run params update (${env})` })
+    });
+    const d = await r.json();
+    showToast(d.ok ? 'Committed' : (d.output || 'Commit 실패'), d.ok ? 'ok' : 'err');
+  } catch(e) { showToast('Git 오류', 'err'); }
+}
+
+async function gitPush() {
+  const token = await getWriteToken();
+  try {
+    const r = await fetch(`${API}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Write-Token': token },
+      body: JSON.stringify({ action: 'push', env })
+    });
+    const d = await r.json();
+    showToast(d.ok ? 'Pushed' : (d.output || 'Push 실패'), d.ok ? 'ok' : 'err');
+  } catch(e) { showToast('Git 오류', 'err'); }
+}
+
+// ─── Collapsible ─────────────────────────────────────────────────────
+
+function toggleColl(hd) {
+  const body = hd.nextElementSibling;
+  const arr = hd.querySelector('.coll-arr');
+  body.classList.toggle('open');
+  arr.classList.toggle('open');
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'ok' ? 'var(--gn)' : 'var(--rd)';
+  t.style.color = '#000';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

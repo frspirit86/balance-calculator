@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<title>수비 이벤트 확률 계산기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.07);--bdh:rgba(255,255,255,0.12);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.08);--gn:#34d399;--yl:#fbbf24;--rd:#f87171;--bl:#60a5fa;--or:#fb923c;--r:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:600}
+  header h1 span{color:var(--tx3);font-weight:400;margin-left:8px}
+  nav{display:flex;gap:2px;padding:8px 32px;border-bottom:1px solid var(--bd);background:var(--sf);flex-wrap:wrap}
+  nav a{color:var(--tx3);text-decoration:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+  nav a:hover{color:var(--tx2);background:var(--sf2)}
+  nav a.active{color:var(--tx);background:var(--sf2)}
+  .container{max-width:1300px;margin:0 auto;padding:24px 32px}
+  .main-layout{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+  .card-hd{padding:13px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bd)}
+  .card-hd h2{font-size:14px;font-weight:600}
+  .tag{font-size:11px;color:var(--tx3);background:var(--bg);padding:3px 10px;border-radius:6px;font-weight:500}
+  .ctrl-section{padding:12px 15px;border-bottom:1px solid var(--bd)}
+  .ctrl-section:last-child{border-bottom:none}
+  .ctrl-label{font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:block}
+  .mode-row{display:flex;gap:4px;flex-wrap:wrap}
+  .mode-btn{font-size:11px;font-weight:600;padding:5px 11px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx3);cursor:pointer;transition:all .15s;font-family:inherit}
+  .mode-btn:hover{border-color:var(--bdh);color:var(--tx2)}
+  .mode-btn.active{border-color:rgba(129,140,248,0.4);background:var(--acbg);color:var(--ac)}
+  .mode-btn.active-yl{border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.07);color:var(--yl)}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}
+  .stat-item{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px}
+  .stat-item .sk{font-size:10px;color:var(--tx3);margin-bottom:3px}
+  .stat-item input.si{width:100%;background:transparent;border:none;border-top:1px solid var(--bd);color:var(--tx);font-weight:700;font-size:13px;text-align:center;padding:2px 0;margin-top:3px;font-family:inherit;-moz-appearance:textfield;outline:none}
+  .stat-item input.si:focus{color:var(--ac)}
+  .stat-item input.si::-webkit-inner-spin-button,.stat-item input.si::-webkit-outer-spin-button{opacity:1}
+  .stat-item .sv{font-size:13px;font-weight:700;text-align:center;padding-top:3px;border-top:1px solid var(--bd)}
+  .char-sel{width:100%;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer;margin-bottom:6px}
+  .char-sel:focus{outline:none;border-color:var(--ac)}
+  .env-sel{background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer}
+  /* QS slider */
+  .qs-row{display:flex;align-items:center;gap:8px}
+  .qs-row input[type=range]{flex:1;accent-color:var(--ac);cursor:pointer}
+  .qs-val{font-size:13px;font-weight:700;color:var(--ac);width:44px;text-align:right;font-variant-numeric:tabular-nums}
+  /* Results */
+  .flow-wrap{padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .flow-step{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;position:relative}
+  .flow-step .fs-num{position:absolute;top:10px;right:12px;font-size:10px;font-weight:700;color:var(--tx3);background:var(--sf2);padding:2px 7px;border-radius:10px}
+  .flow-step .fs-name{font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em}
+  .flow-step .fs-prob{font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:4px}
+  .flow-step .fs-raw{font-size:11px;color:var(--tx3);margin-bottom:8px}
+  .flow-step .fs-formula{font-size:10px;color:var(--tx3);font-family:Consolas,monospace;line-height:1.6;background:var(--sf2);border-radius:5px;padding:5px 7px;margin-top:6px}
+  .flow-step .fs-disabled{font-size:10px;color:var(--yl);margin-top:6px;padding:4px 6px;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.15);border-radius:4px}
+  .flow-step.disabled-step{opacity:0.45}
+  .arrow-col{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--tx3);font-size:18px;padding:0 2px}
+  /* Bar chart */
+  .bar-wrap{padding:16px 18px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .bar-label{font-size:12px;font-weight:600;width:90px;flex-shrink:0}
+  .bar-track{flex:1;height:22px;background:var(--sf2);border-radius:5px;overflow:hidden;position:relative}
+  .bar-fill{height:100%;border-radius:5px;transition:width .35s ease;display:flex;align-items:center;padding-left:6px}
+  .bar-pct{font-size:13px;font-weight:700;width:52px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
+  .bar-sum{font-size:11px;color:var(--tx3);text-align:right;padding-top:4px;border-top:1px solid var(--bd);margin-top:6px}
+  /* Step3 sub-rows */
+  .step3-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .step3-row .s3label{font-size:11px;color:var(--tx2)}
+  .step3-row .s3val{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+  /* Collapsible params */
+  .coll-hd{padding:11px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bd)}
+  .coll-hd:hover{background:rgba(255,255,255,0.02)}
+  .coll-arr{font-size:11px;color:var(--tx3);margin-left:auto;transition:transform .2s}
+  .coll-arr.open{transform:rotate(180deg)}
+  .coll-body{display:none}
+  .coll-body.open{display:block}
+  .pg-section{padding:8px 16px 2px;font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;border-top:1px solid var(--bd);margin-top:2px}
+  .pg-section:first-child{border-top:none;margin-top:0}
+  .pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;padding:6px 16px 10px}
+  .pg-item{background:var(--bg);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;display:flex;flex-direction:column;gap:4px}
+  .pg-item .pk{font-size:10px;color:var(--tx3);font-family:Consolas,monospace;line-height:1.35}
+  .pg-item input.pv{width:100%;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:5px;padding:4px 8px;font-size:12px;text-align:center;-moz-appearance:textfield;font-family:inherit;outline:none}
+  .pg-item input.pv::-webkit-inner-spin-button,.pg-item input.pv::-webkit-outer-spin-button{opacity:1}
+  .pg-item input.pv:focus{border-color:var(--ac)}
+</style>
+</head>
+<body>
+<header>
+  <h1>수비 이벤트 확률 <span>Defence After-Event Probability</span></h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span style="font-size:12px;color:var(--tx3)">환경:</span>
+    <select class="env-sel" id="envSel"></select>
+  </div>
+</header>
+<nav>
+  <a href="graph_defence.html">Defence</a>
+  <a href="graph_target.html">타겟 선정</a>
+  <a href="graph_gk.html">GK</a>
+  <a href="graph_run.html">Run</a>
+  <a href="graph_pass.html">Pass</a>
+  <a href="graph_defzone.html">수비 Zone</a>
+  <a class="active" href="graph_def_afterevent.html">이벤트 확률</a>
+</nav>
+
+<div class="container">
+  <div class="main-layout">
+    <!-- ===== LEFT: Controls ===== -->
+    <div>
+      <!-- Defender -->
+      <div class="card">
+        <div class="card-hd"><h2>🛡️ 수비수</h2></div>
+        <div class="ctrl-section">
+          <select class="char-sel" id="defSel" onchange="onDefChange()"><option value="">직접 입력...</option></select>
+          <div class="stat-grid" id="defStatGrid"></div>
+        </div>
+      </div>
+
+      <!-- Attacker VS -->
+      <div class="card">
+        <div class="card-hd"><h2>⚽ 공격수 VS 스탯</h2></div>
+        <div class="ctrl-section">
+          <select class="char-sel" id="atkSel" onchange="onAtkChange()"><option value="">직접 입력...</option></select>
+          <div class="stat-grid">
+            <div class="stat-item"><div class="sk">VsDribbling</div><input type="number" class="si" id="vs_drib" min="1" max="200" value="75" oninput="update()"></div>
+            <div class="stat-item"><div class="sk">VsPass</div><input type="number" class="si" id="vs_pass" min="1" max="200" value="75" oninput="update()"></div>
+            <div class="stat-item"><div class="sk">VsShot</div><input type="number" class="si" id="vs_shot" min="1" max="200" value="75" oninput="update()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario -->
+      <div class="card">
+        <div class="card-hd"><h2>⚙️ 시나리오</h2></div>
+        <div class="ctrl-section">
+          <span class="ctrl-label">볼 타입</span>
+          <div class="mode-row" id="ballTypeBtns"></div>
+        </div>
+        <div class="ctrl-section">
+          <span class="ctrl-label">태클 타입</span>
+          <div class="mode-row" id="tackleTypeBtns"></div>
+        </div>
+        <div class="ctrl-section">
+          <span class="ctrl-label">태클 타이밍</span>
+          <div class="mode-row" id="timingBtns"></div>
+        </div>
+        <div class="ctrl-section">
+          <span class="ctrl-label">퀄리티 점수 (Tq)</span>
+          <div class="qs-row">
+            <input type="range" id="qsSlider" min="0" max="1" step="0.01" value="0" oninput="onQsChange(this.value)">
+            <span class="qs-val" id="qsVal">0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: Results ===== -->
+    <div>
+      <!-- Event Flow -->
+      <div class="card">
+        <div class="card-hd">
+          <h2>이벤트 발생 흐름</h2>
+          <span class="tag" id="scenTag">—</span>
+        </div>
+        <div class="flow-wrap" id="flowWrap"></div>
+      </div>
+
+      <!-- Final Distribution Bar -->
+      <div class="card">
+        <div class="card-hd"><h2>📊 최종 이벤트 분배</h2><span class="tag">전체 합계 100%</span></div>
+        <div class="bar-wrap" id="barWrap"></div>
+      </div>
+
+      <!-- Params Collapsible -->
+      <div class="card">
+        <div class="coll-hd" onclick="toggleColl('params')">
+          <span style="font-size:13px;font-weight:600">📐 공식 파라미터 (GlobalConstDefence)</span>
+          <span class="coll-arr" id="params-arr">▼</span>
+        </div>
+        <div class="coll-body" id="params-body">
+          <div class="pg-section">ToDribble — 드리블 볼 수비 시</div>
+          <div class="pg-grid" id="pg-td-dri"></div>
+          <div class="pg-section">ToDribble — 패스 볼 수비 시</div>
+          <div class="pg-grid" id="pg-td-pass"></div>
+          <div class="pg-section">ToClear — 슈팅 볼 수비 시</div>
+          <div class="pg-grid" id="pg-tc"></div>
+          <div class="pg-section">ToMyTeam — 드리블 볼 수비 시</div>
+          <div class="pg-grid" id="pg-tmt-dri"></div>
+          <div class="pg-section">ToMyTeam — 패스 볼 수비 시</div>
+          <div class="pg-grid" id="pg-tmt-pass"></div>
+          <div class="pg-section">ToMyTeam — 슈팅 볼 수비 시</div>
+          <div class="pg-grid" id="pg-tmt-shot"></div>
+          <div class="pg-section">ToEnemy</div>
+          <div class="pg-grid" id="pg-te"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const API = '/api';
+let ENV = 'th';
+let characters = [];
+let defChar = {mk:75, bp:75, bs:75, cm:75};
+let ballType  = 'drib';    // drib | pass | shot
+let tackleType = 'standing'; // standing | sliding
+let timing    = 'normal';  // normal | late
+let qs        = 0;         // quality score
+
+function norm(v) { return (v - 51) / 49; }
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+// ===================== PARAMETERS =====================
+const PARAM_DEFS = [
+  // --- ToDribble drib ---
+  {k:'td_dri_D',     jk:'def_ToDribbleBall_Dri_Default',              def:0.5,  sec:'td-dri',  label:'Dri Default'},
+  {k:'td_dri_Wmk',   jk:'def_ToDribbleBall_Dri_Weight_Marking',       def:0.7,  sec:'td-dri',  label:'Dri W_Marking'},
+  {k:'td_dri_Wcm',   jk:'def_ToDribbleBall_Dri_Weight_Composure',     def:0.3,  sec:'td-dri',  label:'Dri W_Composure'},
+  {k:'td_dri_Wqs',   jk:'def_ToDribbleBall_Dri_Weight_QualityScore',  def:0.0,  sec:'td-dri',  label:'Dri W_QualityScore'},
+  // --- ToDribble pass ---
+  {k:'td_pass_D',    jk:'def_ToDribbleBall_Pass_Default',             def:0.2,  sec:'td-pass', label:'Pass Default'},
+  {k:'td_pass_Wint', jk:'def_ToDribbleBall_Pass_Weight_Intercept',    def:0.7,  sec:'td-pass', label:'Pass W_Intercept'},
+  {k:'td_pass_Wcm',  jk:'def_ToDribbleBall_Pass_Weight_Composure',    def:0.3,  sec:'td-pass', label:'Pass W_Composure'},
+  {k:'td_pass_Wqs',  jk:'def_ToDribbleBall_Pass_Weight_QualityScore', def:1.0,  sec:'td-pass', label:'Pass W_QualityScore'},
+  // --- ToClear shot ---
+  {k:'tc_D',         jk:'def_ToClear_Shot_Default',                   def:0.2,  sec:'tc',      label:'Shot Default'},
+  {k:'tc_Wbs',       jk:'def_ToClear_Shot_Weight_Shotblock',          def:0.4,  sec:'tc',      label:'Shot W_Shotblock'},
+  {k:'tc_Wcm',       jk:'def_ToClear_Shot_Weight_Composure',          def:0.01, sec:'tc',      label:'Shot W_Composure'},
+  {k:'tc_Wqs',       jk:'def_ToClear_Shot_Weight_QualityScore',       def:0.0,  sec:'tc',      label:'Shot W_QualityScore'},
+  // --- ToMyTeam drib ---
+  {k:'tmt_dri_D',    jk:'def_ToMyTeam_Dri_Default',                   def:0.6,  sec:'tmt-dri', label:'Dri Default'},
+  {k:'tmt_dri_Wmk',  jk:'def_ToMyTeam_Dri_Weight_Marking',            def:0.7,  sec:'tmt-dri', label:'Dri W_Marking'},
+  {k:'tmt_dri_Wcm',  jk:'def_ToMyTeam_Dri_Weight_Composure',          def:0.3,  sec:'tmt-dri', label:'Dri W_Composure'},
+  {k:'tmt_dri_Wqs',  jk:'def_ToMyTeam_Dri_Weight_QualityScore',       def:0.0,  sec:'tmt-dri', label:'Dri W_QualityScore'},
+  // --- ToMyTeam pass ---
+  {k:'tmt_pass_D',   jk:'def_ToMyTeam_Pass_Default',                  def:0.6,  sec:'tmt-pass',label:'Pass Default'},
+  {k:'tmt_pass_Wint',jk:'def_ToMyTeam_Pass_Weight_Marking',           def:0.7,  sec:'tmt-pass',label:'Pass W_Intercept'},
+  {k:'tmt_pass_Wcm', jk:'def_ToMyTeam_Pass_Weight_Composure',         def:0.3,  sec:'tmt-pass',label:'Pass W_Composure'},
+  {k:'tmt_pass_Wqs', jk:'def_ToMyTeam_Pass_Weight_QualityScore',      def:0.0,  sec:'tmt-pass',label:'Pass W_QualityScore'},
+  // --- ToMyTeam shot ---
+  {k:'tmt_shot_D',   jk:'def_ToMyTeam_Shot_Default',                  def:0.6,  sec:'tmt-shot',label:'Shot Default'},
+  {k:'tmt_shot_Wbs', jk:'def_ToMyTeam_Shot_Weight_ShotBlock',         def:0.7,  sec:'tmt-shot',label:'Shot W_ShotBlock'},
+  {k:'tmt_shot_Wcm', jk:'def_ToMyTeam_Shot_Weight_Composure',         def:0.3,  sec:'tmt-shot',label:'Shot W_Composure'},
+  {k:'tmt_shot_Wqs', jk:'def_ToMyTeam_Shot_Weight_QualityScore',      def:0.0,  sec:'tmt-shot',label:'Shot W_QualityScore'},
+  // --- ToEnemy ---
+  {k:'te_Ratio',     jk:'def_ToEnemy_Ratio',                          def:0.5,  sec:'te',      label:'ToEnemy_Ratio'},
+];
+const P = {};
+PARAM_DEFS.forEach(d => P[d.k] = d.def);
+
+// ===================== CALCULATION =====================
+function calcAll() {
+  const {mk, bp, bs, cm} = defChar;
+  const vsDrib = parseFloat(document.getElementById('vs_drib').value) || 75;
+  const vsPass = parseFloat(document.getElementById('vs_pass').value) || 75;
+  const vsShot = parseFloat(document.getElementById('vs_shot').value) || 75;
+
+  const noTD = timing === 'late' || tackleType === 'sliding';
+
+  // === 1단계: ToDribble / ToClear ===
+  let p1_raw_formula = 0;
+  let p1_name, p1_formulaStr;
+
+  if (ballType === 'drib') {
+    p1_name = 'ToDribble';
+    p1_raw_formula = P.td_dri_D
+      + P.td_dri_Wmk  * (norm(mk) - norm(vsDrib))
+      + P.td_dri_Wcm  * norm(cm)
+      + qs * P.td_dri_Wqs;
+    p1_formulaStr =
+      `D=${P.td_dri_D}\n`+
+      `+ ${P.td_dri_Wmk}×(Mk${norm(mk)>=0?'+':''}${norm(mk).toFixed(2)} − VsDrib${norm(vsDrib)>=0?'+':''}${norm(vsDrib).toFixed(2)})\n`+
+      `+ ${P.td_dri_Wcm}×Cm${norm(cm)>=0?'+':''}${norm(cm).toFixed(2)}\n`+
+      `+ Tq×${P.td_dri_Wqs}`;
+  } else if (ballType === 'pass') {
+    p1_name = 'ToDribble';
+    p1_raw_formula = P.td_pass_D
+      + P.td_pass_Wint * (norm(bp) - norm(vsPass))
+      + P.td_pass_Wcm  * norm(cm)
+      + qs * P.td_pass_Wqs;
+    p1_formulaStr =
+      `D=${P.td_pass_D}\n`+
+      `+ ${P.td_pass_Wint}×(Bp${norm(bp)>=0?'+':''}${norm(bp).toFixed(2)} − VsPass${norm(vsPass)>=0?'+':''}${norm(vsPass).toFixed(2)})\n`+
+      `+ ${P.td_pass_Wcm}×Cm${norm(cm)>=0?'+':''}${norm(cm).toFixed(2)}\n`+
+      `+ Tq×${P.td_pass_Wqs}`;
+  } else {
+    p1_name = 'ToClear';
+    p1_raw_formula = P.tc_D
+      + P.tc_Wbs * (norm(bs) - norm(vsShot))
+      + P.tc_Wcm * norm(cm)
+      + qs * P.tc_Wqs;
+    p1_formulaStr =
+      `D=${P.tc_D}\n`+
+      `+ ${P.tc_Wbs}×(Bs${norm(bs)>=0?'+':''}${norm(bs).toFixed(2)} − VsShot${norm(vsShot)>=0?'+':''}${norm(vsShot).toFixed(2)})\n`+
+      `+ ${P.tc_Wcm}×Cm${norm(cm)>=0?'+':''}${norm(cm).toFixed(2)}\n`+
+      `+ Tq×${P.tc_Wqs}`;
+  }
+
+  const p1 = noTD && ballType !== 'shot' ? 0 : clamp01(p1_raw_formula);
+
+  // === 2단계: ToMyTeam ===
+  let p2_raw_formula = 0, p2_formulaStr;
+
+  if (ballType === 'drib') {
+    p2_raw_formula = P.tmt_dri_D
+      + P.tmt_dri_Wmk * (norm(mk) - norm(vsDrib))
+      + P.tmt_dri_Wcm * norm(cm)
+      + qs * P.tmt_dri_Wqs;
+    p2_formulaStr =
+      `D=${P.tmt_dri_D}\n`+
+      `+ ${P.tmt_dri_Wmk}×(Mk${norm(mk)>=0?'+':''}${norm(mk).toFixed(2)} − VsDrib${norm(vsDrib)>=0?'+':''}${norm(vsDrib).toFixed(2)})\n`+
+      `+ ${P.tmt_dri_Wcm}×Cm${norm(cm)>=0?'+':''}${norm(cm).toFixed(2)}\n`+
+      `+ Tq×${P.tmt_dri_Wqs}`;
+  } else if (ballType === 'pass') {
+    p2_raw_formula = P.tmt_pass_D
+      + P.tmt_pass_Wint * (norm(bp) - norm(vsPass))
+      + P.tmt_pass_Wcm  * norm(cm)
+      + qs * P.tmt_pass_Wqs;
+    p2_formulaStr =
+      `D=${P.tmt_pass_D}\n`+
+      `+ ${P.tmt_pass_Wint}×(Bp${norm(bp)>=0?'+':''}${norm(bp).toFixed(2)} − VsPass${norm(vsPass)>=0?'+':''}${norm(vsPass).toFixed(2)})\n`+
+      `+ ${P.tmt_pass_Wcm}×Cm${norm(cm)>=0?'+':''}${norm(cm).toFixed(2)}\n`+
+      `+ Tq×${P.tmt_pass_Wqs}`;
+  } else {
+    p2_raw_formula = P.tmt_shot_D
+      + P.tmt_shot_Wbs * (norm(bs) - norm(vsShot))
+      + P.tmt_shot_Wcm * norm(cm)
+      + qs * P.tmt_shot_Wqs;
+    p2_formulaStr =
+      `D=${P.tmt_shot_D}\n`+
+      `+ ${P.tmt_shot_Wbs}×(Bs${norm(bs)>=0?'+':''}${norm(bs).toFixed(2)} − VsShot${norm(vsShot)>=0?'+':''}${norm(vsShot).toFixed(2)})\n`+
+      `+ ${P.tmt_shot_Wcm}×Cm${norm(cm)>=0?'+':''}${norm(cm).toFixed(2)}\n`+
+      `+ Tq×${P.tmt_shot_Wqs}`;
+  }
+
+  const p2 = clamp01(p2_raw_formula);
+
+  // === Final distribution ===
+  const P_A   = p1;
+  const P_B   = (1 - p1) * p2;
+  const P_C   = (1 - p1) * (1 - p2) * P.te_Ratio;
+  const P_D   = (1 - p1) * (1 - p2) * (1 - P.te_Ratio);
+
+  return {p1, p1_raw: p1_raw_formula, p1_name, p1_formulaStr, noTD,
+          p2, p2_raw: p2_raw_formula, p2_formulaStr,
+          P_A, P_B, P_C, P_D};
+}
+
+// ===================== RENDER =====================
+function pct(v) { return (v * 100).toFixed(1) + '%'; }
+function probColor(v) { return v >= 0.7 ? 'var(--gn)' : v >= 0.4 ? 'var(--yl)' : 'var(--rd)'; }
+
+function renderFlow(r) {
+  const {p1, p1_raw, p1_name, p1_formulaStr, noTD,
+         p2, p2_raw, p2_formulaStr,
+         P_A, P_B, P_C, P_D} = r;
+
+  const disabled1 = noTD && ballType !== 'shot';
+
+  document.getElementById('flowWrap').innerHTML = `
+    <!-- Step 1 -->
+    <div class="flow-step${disabled1?' disabled-step':''}">
+      <div class="fs-num">1단계</div>
+      <div class="fs-name">${p1_name}</div>
+      <div class="fs-prob" style="color:${disabled1?'var(--tx3)':probColor(p1)}">${pct(p1)}</div>
+      <div class="fs-raw">raw ${p1_raw.toFixed(4)}</div>
+      ${disabled1?`<div class="fs-disabled">⚠ 슬라이딩 태클 / 늦은 타이밍 → 비활성 (0%)</div>`:''}
+      <div class="fs-formula">${p1_formulaStr.replace(/\n/g,'<br>')}</div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="flow-step">
+      <div class="fs-num">2단계</div>
+      <div class="fs-name">ToMyTeam</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">나머지 ${pct(1-p1)} 내 조건부</div>
+      <div class="fs-prob" style="color:${probColor(p2)}">${pct(p2)}</div>
+      <div class="fs-raw">raw ${p2_raw.toFixed(4)}</div>
+      <div class="fs-formula">${p2_formulaStr.replace(/\n/g,'<br>')}</div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="flow-step">
+      <div class="fs-num">3단계</div>
+      <div class="fs-name">ToEnemy · Physics</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">나머지 ${pct((1-p1)*(1-p2))} 에서 분기</div>
+      <div class="step3-row">
+        <span class="s3label">ToEnemy 비율</span>
+        <span class="s3val" style="color:var(--tx2)">${(P.te_Ratio*100).toFixed(0)}%</span>
+      </div>
+      <div style="border-top:1px solid var(--bd);padding-top:10px;margin-top:4px">
+        <div class="step3-row">
+          <span class="s3label" style="color:var(--rd)">ToEnemy</span>
+          <span class="s3val" style="color:var(--rd)">${pct(P_C)}</span>
+        </div>
+        <div class="step3-row">
+          <span class="s3label" style="color:var(--bl)">순수 물리</span>
+          <span class="s3val" style="color:var(--bl)">${pct(P_D)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBars(r) {
+  const {P_A, P_B, P_C, P_D, p1_name} = r;
+  const rows = [
+    {label: p1_name,     val: P_A, color:'var(--gn)'},
+    {label: 'ToMyTeam',  val: P_B, color:'var(--ac)'},
+    {label: 'ToEnemy',   val: P_C, color:'var(--rd)'},
+    {label: '순수 물리',  val: P_D, color:'var(--bl)'},
+  ];
+  const total = P_A + P_B + P_C + P_D;
+  document.getElementById('barWrap').innerHTML =
+    rows.map(row => `
+      <div class="bar-row">
+        <div class="bar-label" style="color:${row.color}">${row.label}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${(row.val*100).toFixed(2)}%;background:${row.color}"></div>
+        </div>
+        <div class="bar-pct" style="color:${row.color}">${pct(row.val)}</div>
+      </div>`).join('') +
+    `<div class="bar-sum">합계: ${pct(total)} ${Math.abs(total-1)<0.0001?'✓':''}</div>`;
+}
+
+function update() {
+  const r = calcAll();
+  renderFlow(r);
+  renderBars(r);
+  // Scenario tag
+  const bL = {drib:'드리블', pass:'패스', shot:'슈팅'};
+  const tL = {standing:'서서', sliding:'슬라이딩'};
+  const mL = {normal:'정상 타이밍', late:'늦은 타이밍'};
+  document.getElementById('scenTag').textContent =
+    `${bL[ballType]} · ${tL[tackleType]} · ${mL[timing]}`;
+}
+
+// ===================== BUTTONS =====================
+function buildButtons() {
+  const bDef = [
+    {v:'drib', l:'🏃 드리블'},
+    {v:'pass', l:'⚽ 패스'},
+    {v:'shot', l:'🥅 슈팅'},
+  ];
+  document.getElementById('ballTypeBtns').innerHTML =
+    bDef.map(b=>`<button class="mode-btn${ballType===b.v?' active':''}" onclick="setBall('${b.v}')">${b.l}</button>`).join('');
+
+  const tDef = [{v:'standing',l:'서서 태클'},{v:'sliding',l:'슬라이딩'}];
+  document.getElementById('tackleTypeBtns').innerHTML =
+    tDef.map(b=>{
+      const isYl = b.v==='sliding' && ballType!=='shot';
+      return `<button class="mode-btn${tackleType===b.v?(isYl?' active-yl':' active'):''}" onclick="setTackle('${b.v}')">${b.l}</button>`;
+    }).join('');
+
+  const mDef = [{v:'normal',l:'정상'},{v:'late',l:'늦은 타이밍'}];
+  document.getElementById('timingBtns').innerHTML =
+    mDef.map(b=>{
+      const isYl = b.v==='late' && ballType!=='shot';
+      return `<button class="mode-btn${timing===b.v?(isYl?' active-yl':' active'):''}" onclick="setTiming('${b.v}')">${b.l}</button>`;
+    }).join('');
+}
+
+function setBall(v)  { ballType=v;    buildButtons(); update(); }
+function setTackle(v){ tackleType=v;  buildButtons(); update(); }
+function setTiming(v){ timing=v;      buildButtons(); update(); }
+function onQsChange(v){
+  qs=parseFloat(v);
+  document.getElementById('qsVal').textContent=qs.toFixed(2);
+  update();
+}
+
+// ===================== PARAMS PANEL =====================
+function buildParamsPanel() {
+  const secs = ['td-dri','td-pass','tc','tmt-dri','tmt-pass','tmt-shot','te'];
+  secs.forEach(sec => {
+    const el = document.getElementById(`pg-${sec}`);
+    if(!el) return;
+    const defs = PARAM_DEFS.filter(d=>d.sec===sec);
+    el.innerHTML = defs.map(d=>`
+      <div class="pg-item">
+        <div class="pk">${d.label}</div>
+        <input type="number" class="pv" id="pp_${d.k}" value="${P[d.k]}"
+          step="${d.def<0.01?0.001:d.def<0.1?0.01:0.05}"
+          oninput="onP('${d.k}',this.value)">
+      </div>`).join('');
+  });
+}
+function onP(k,v){ const n=parseFloat(v); if(!isNaN(n)){ P[k]=n; update(); } }
+function toggleColl(id){
+  document.getElementById(`${id}-body`).classList.toggle('open');
+  document.getElementById(`${id}-arr`).classList.toggle('open');
+}
+
+// ===================== DEFENDER STATS PANEL =====================
+const DEF_STATS = [
+  {k:'mk', label:'Marking'},
+  {k:'bp', label:'BlkPass (Intercept)'},
+  {k:'bs', label:'BlkShot'},
+  {k:'cm', label:'Composure'},
+];
+
+function renderDefStats() {
+  const hasChar = !!document.getElementById('defSel').value;
+  document.getElementById('defStatGrid').innerHTML = DEF_STATS.map(s=>{
+    if(!hasChar) {
+      return `<div class="stat-item"><div class="sk">${s.label}</div>
+        <input type="number" class="si" min="1" max="200" value="${defChar[s.k]||75}"
+          oninput="defChar['${s.k}']=parseFloat(this.value)||75;update()">
+      </div>`;
+    } else {
+      return `<div class="stat-item"><div class="sk">${s.label}</div>
+        <div class="sv">${Math.round(defChar[s.k]??75)}</div>
+      </div>`;
+    }
+  }).join('');
+}
+
+function onDefChange() {
+  const name = document.getElementById('defSel').value;
+  const c = characters.find(c=>c.name===name);
+  if(c) {
+    defChar = {
+      mk: parseFloat(c.marking    ?? 75),
+      bp: parseFloat(c.blockPass  ?? 75),
+      bs: parseFloat(c.blockShot  ?? 75),
+      cm: parseFloat(c.composure  ?? 75),
+    };
+  } else {
+    defChar = {mk:75, bp:75, bs:75, cm:75};
+  }
+  renderDefStats();
+  update();
+}
+
+function onAtkChange() {
+  const name = document.getElementById('atkSel').value;
+  const c = characters.find(c=>c.name===name);
+  if(c) {
+    document.getElementById('vs_drib').value = Math.round(parseFloat(c.dribbling  ?? 75));
+    document.getElementById('vs_pass').value = Math.round(parseFloat(c.groundPass ?? 75));
+    document.getElementById('vs_shot').value = Math.round(parseFloat(c.shootAccuracy ?? 75));
+    update();
+  }
+}
+
+// ===================== DATA LOADING =====================
+async function loadChars() {
+  try {
+    const FIELDS = ['marking','blockPass','blockShot','composure','dribbling','groundPass','shootAccuracy'];
+    const res = await fetch(`${API}/characters?env=${ENV}&fields=${FIELDS.join(',')}`);
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    characters = data.characters || data || [];
+    ['defSel','atkSel'].forEach(id => {
+      const sel = document.getElementById(id);
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">직접 입력...</option>` +
+        characters.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+      if(cur) sel.value = cur;
+    });
+  } catch(e) { characters = []; }
+}
+
+async function loadParams() {
+  try {
+    const res = await fetch(`${API}/load?file=GlobalConstDefence&env=${ENV}&t=${Date.now()}`);
+    if(!res.ok) throw new Error();
+    const raw = await res.json();
+    const d = raw.data || raw;
+    PARAM_DEFS.forEach(pd => {
+      if(pd.jk && d[pd.jk] !== undefined) {
+        P[pd.k] = parseFloat(d[pd.jk]);
+        const el = document.getElementById(`pp_${pd.k}`);
+        if(el) el.value = P[pd.k];
+      }
+    });
+    update();
+  } catch(e) { /* use defaults */ }
+}
+
+async function initEnvSel() {
+  try {
+    const cfg = await (await fetch(`${API}/config`)).json();
+    const sel = document.getElementById('envSel');
+    const envs = cfg.envs || cfg.environments || [ENV];
+    sel.innerHTML = envs.map(e=>`<option value="${e}"${e===ENV?' selected':''}>${e}</option>`).join('');
+    if(cfg.defaultEnv){ ENV=cfg.defaultEnv; sel.value=ENV; }
+    sel.onchange = ()=>{ ENV=sel.value; loadChars(); loadParams(); };
+  } catch(e) {
+    document.getElementById('envSel').innerHTML = `<option value="${ENV}">${ENV}</option>`;
+  }
+}
+
+async function init() {
+  await initEnvSel();
+  buildButtons();
+  buildParamsPanel();
+  renderDefStats();
+  update();
+  await Promise.all([loadChars(), loadParams()]);
+}
+
+init();
+</script>
+</body>
+</html>

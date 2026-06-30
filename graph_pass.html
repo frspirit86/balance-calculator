@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<title>Pass Simulation Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.07);--bdh:rgba(255,255,255,0.12);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.08);--gn:#34d399;--yl:#fbbf24;--rd:#f87171;--bl:#60a5fa;--r:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:600} header h1 span{color:var(--tx3);font-weight:400;margin-left:8px}
+  select.env-sel{background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer}
+  nav{display:flex;gap:2px;padding:8px 32px;border-bottom:1px solid var(--bd);background:var(--sf)}
+  nav a{color:var(--tx3);text-decoration:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+  nav a:hover{color:var(--tx2);background:var(--sf2)} nav a.active{color:var(--tx);background:var(--sf2)}
+  .container{max-width:1600px;margin:0 auto;padding:24px 32px}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+  .card-hd{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bd)}
+  .card-hd h2{font-size:14px;font-weight:600}
+  .tag{font-size:11px;color:var(--tx3);background:var(--bg);padding:3px 10px;border-radius:6px;font-weight:500}
+  .toggle{display:flex;align-items:center;gap:8px;margin-left:auto;cursor:pointer;font-size:12px;user-select:none}
+  .toggle input{display:none}
+  .tslider{width:36px;height:20px;background:var(--sf2);border-radius:10px;position:relative;transition:background .2s}
+  .tslider::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--tx3);border-radius:50%;transition:all .2s}
+  .toggle input:checked+.tslider{background:var(--ac)}
+  .toggle input:checked+.tslider::after{left:18px;background:#fff}
+  .tlabel{color:var(--tx2);font-weight:500}
+  .main-layout{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+  /* Canvas */
+  #fieldCanvas{display:block;cursor:crosshair;border-radius:8px;border:1px solid var(--bd)}
+  .canvas-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+  .canvas-card .card-hd{padding:12px 16px}
+  .canvas-wrap{padding:12px;background:var(--bg);position:relative}
+  /* Controls */
+  .ctrl-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+  .ctrl-section{padding:14px 16px;border-bottom:1px solid var(--bd)}
+  .ctrl-section:last-child{border-bottom:none}
+  .ctrl-label{font-size:11px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
+  .char-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .char-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+  .char-sel{flex:1;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .char-sel:focus{outline:none;border-color:var(--ac)}
+  .mode-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
+  .mode-btn{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx3);cursor:pointer;transition:all .15s}
+  .mode-btn:hover{border-color:var(--bdh);color:var(--tx2)}
+  .mode-btn.active{border-color:rgba(129,140,248,0.4);background:var(--acbg);color:var(--ac)}
+  .stat-mini{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px}
+  .stat-mini-item{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:11px}
+  .stat-mini-item .k{color:var(--tx3);margin-bottom:2px}
+  .stat-mini-item .v{font-weight:700;font-variant-numeric:tabular-nums}
+  /* Slider row */
+  .sl-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sl-row label{font-size:12px;color:var(--tx2);min-width:90px;flex-shrink:0}
+  .sl-row input[type=range]{flex:1;accent-color:var(--ac);height:4px}
+  .sl-row .sl-val{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;min-width:40px;text-align:right;color:var(--tx)}
+  /* Score bars */
+  .score-bars{padding:12px 16px}
+  .score-item{margin-bottom:10px}
+  .score-item .score-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .score-item .score-name{font-size:12px;color:var(--tx2)}
+  .score-item .score-val{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--tx)}
+  .score-track{height:6px;background:var(--sf2);border-radius:3px;overflow:hidden}
+  .score-fill{height:100%;border-radius:3px;transition:width .3s,background .3s}
+  .score-summary{margin-top:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);font-size:13px;font-weight:600;text-align:center}
+  /* GlobalConst collapsible */
+  .coll-hd{padding:12px 20px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bd)}
+  .coll-hd:hover{background:rgba(255,255,255,0.02)}
+  .coll-arr{font-size:11px;color:var(--tx3);margin-left:auto;transition:transform .2s}
+  .coll-arr.open{transform:rotate(180deg)}
+  .coll-body{display:none}
+  .coll-body.open{display:block}
+  .gc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;padding:16px}
+  .gc-item{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+  .gc-item .gck{font-size:10px;color:var(--tx3);font-family:Consolas,monospace}
+  .gc-item .gcv-row{display:flex;align-items:center;gap:6px}
+  .gc-item input[type=range]{flex:1;accent-color:var(--ac);height:4px}
+  .gc-item .gcv{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;min-width:52px;text-align:right;color:var(--tx)}
+  .gc-item .gcv.changed{color:var(--yl)}
+  .sr{display:flex;gap:8px;padding:8px 14px;border-top:1px solid var(--bd)}
+  .sb{font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;transition:all .15s;font-family:inherit}
+  .sb.p{color:#fff;background:var(--ac);border-color:var(--ac)} .sb.p:hover{background:#6366f1}
+  .sb.s{color:var(--tx2);background:var(--sf2)} .sb.s:hover{color:var(--tx);border-color:var(--bdh)}
+  .git-btn{border-color:rgba(251,191,36,0.3)!important;color:var(--yl)!important}
+  .toast{position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+  /* Legend */
+  .legend{display:flex;gap:12px;padding:8px 12px;font-size:11px;color:var(--tx3);flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:5px}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .fbtn{font-size:11px;color:var(--tx3);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:3px 10px;cursor:pointer}
+  .fbtn:hover{color:var(--tx2);border-color:var(--bdh)}
+  .hint-bar{padding:6px 14px;font-size:11px;color:var(--tx3);background:rgba(255,255,255,0.02);border-top:1px solid var(--bd)}
+  /* OT angle row visibility */
+  .ot-row{transition:opacity .2s}
+  .ot-row.hidden{opacity:0;pointer-events:none;height:0;overflow:hidden;margin:0!important}
+  /* phys-mini */
+  .phys-mini{font-size:11px;color:var(--tx2);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 10px}
+  .phys-mini .pk{color:var(--tx3)}
+  .phys-mini .pv{font-weight:700;font-variant-numeric:tabular-nums;color:var(--tx)}
+  @media(max-width:1200px){.main-layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pass Simulation <span>Dashboard</span></h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:12px;color:var(--tx3)">환경:</span>
+    <select class="env-sel" id="envSel" onchange="onEnvChange()"></select>
+  </div>
+</header>
+<nav>
+  <a href="graph_defence.html">Defence</a>
+  <a href="graph_target.html">타겟 선정</a>
+  <a href="graph_gk.html">GK</a>
+  <a href="graph_run.html">Run</a>
+  <a class="active" href="graph_pass.html">Pass</a>
+</nav>
+
+<div class="container">
+  <div class="main-layout">
+    <!-- LEFT: Field Canvas -->
+    <div>
+      <div class="canvas-card">
+        <div class="card-hd" style="padding:10px 14px">
+          <h2>Field Simulation</h2>
+          <span class="tag">드래그로 위치 설정</span>
+          <button class="fbtn" style="margin-left:auto" onclick="resetPositions()">위치 초기화</button>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div><span>P (패서)</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div><span>R (리시버)</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div><span>D (수비수)</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(200,200,200,0.6);border:1px solid rgba(200,200,200,0.6)"></div><span>B (기준점)</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#818cf8"></div><span>★ 최종점</span></div>
+          <div class="legend-item" style="gap:6px"><div style="width:20px;height:2px;background:linear-gradient(90deg,#34d399,#fbbf24)"></div><span>패스 안전도</span></div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="fieldCanvas" width="840" height="544"></canvas>
+        </div>
+        <div class="hint-bar">빈 필드 클릭: 수비수 추가 | 더블클릭: 수비수 제거 | 수동 모드: B 드래그 가능</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Controls -->
+    <div>
+      <div class="ctrl-card">
+        <!-- Passer Section -->
+        <div class="ctrl-section">
+          <div class="ctrl-label" style="color:var(--yl)">■ 패서 설정</div>
+          <div class="char-row">
+            <div class="char-dot" style="background:#fbbf24"></div>
+            <select class="char-sel" id="selPasser" onchange="onPasserChange()">
+              <option value="">캐릭터 선택...</option>
+            </select>
+          </div>
+          <div class="stat-mini" id="passerStats">
+            <div class="stat-mini-item"><div class="k">PassingTechnic</div><div class="v" id="sPT">—</div></div>
+            <div class="stat-mini-item"><div class="k">Composure</div><div class="v" id="sCO">—</div></div>
+            <div class="stat-mini-item"><div class="k">FirstTouch</div><div class="v" id="sFT">—</div></div>
+          </div>
+          <div style="margin-top:10px">
+            <div class="ctrl-label" style="margin-bottom:6px">패서 방향</div>
+            <div class="sl-row">
+              <label id="facingLabel">자동 (리시버 방향)</label>
+              <input type="range" id="facingSlider" min="0" max="360" step="1" value="0"
+                oninput="onFacingSlider(this.value)" ondblclick="resetFacingAuto()">
+              <span class="sl-val" id="facingVal">auto</span>
+            </div>
+            <div style="font-size:10px;color:var(--tx3);margin-top:2px">더블클릭: 자동(리시버 방향)으로 초기화</div>
+          </div>
+        </div>
+
+        <!-- BasePoint 설정 섹션 -->
+        <div class="ctrl-section">
+          <div class="ctrl-label" style="color:rgba(200,200,200,0.8)">■ 기준점 (BasePoint) 설정</div>
+          <div class="mode-row" style="margin-bottom:8px">
+            <button class="mode-btn active" id="bpModeAuto" onclick="setBasePtMode('auto')">자동 계산</button>
+            <button class="mode-btn" id="bpModeManual" onclick="setBasePtMode('manual')">수동 배치 (B드래그)</button>
+          </div>
+
+          <div id="autoModeControls">
+            <!-- Receiver character select -->
+            <div class="char-row">
+              <div class="char-dot" style="background:#34d399"></div>
+              <select class="char-sel" id="selReceiver" onchange="onReceiverChange()">
+                <option value="">리시버 캐릭터...</option>
+              </select>
+            </div>
+            <div class="stat-mini" style="grid-template-columns:1fr 1fr;margin-top:4px">
+              <div class="stat-mini-item"><div class="k">Speed</div><div class="v" id="sR-spd">—</div></div>
+              <div class="stat-mini-item"><div class="k">달리기 방향</div><div class="v" id="sR-dir">45°</div></div>
+            </div>
+            <!-- Receiver run direction -->
+            <div style="margin-top:8px">
+              <div class="sl-row">
+                <label style="min-width:80px">수신 방향</label>
+                <input type="range" id="recvRunDirSlider" min="0" max="360" step="1" value="45"
+                  oninput="onRecvRunDirChange(this.value)">
+                <span class="sl-val" id="recvRunDirVal">45°</span>
+              </div>
+            </div>
+            <!-- Penetrate level -->
+            <div style="font-size:11px;color:var(--tx3);margin:6px 0 4px;font-weight:700;letter-spacing:.05em;text-transform:uppercase">침투 레벨</div>
+            <div class="mode-row" id="penetrateRow">
+              <button class="mode-btn active" data-lv="1" onclick="setPenetrateLevel(1)">Lv.1 (전방)</button>
+              <button class="mode-btn" data-lv="2" onclick="setPenetrateLevel(2)">Lv.2 (측면)</button>
+              <button class="mode-btn" data-lv="3" onclick="setPenetrateLevel(3)">Lv.3 (후방)</button>
+            </div>
+            <!-- Computed info -->
+            <div class="phys-mini" id="basePtInfo" style="margin-top:6px">
+              <span class="pk">도달 시간: </span><span class="pv" id="arrTimeInfo">—</span><span class="pk">s &nbsp; 이동 거리: </span><span class="pv" id="movDistInfo">—</span><span class="pk">m</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 후보 격자 & 최종 기준점 섹션 -->
+        <div class="ctrl-section">
+          <div class="ctrl-label">패스 기준점 후보</div>
+          <!-- Grid toggle -->
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <label class="toggle" style="margin-left:0;justify-content:flex-start">
+              <input type="checkbox" id="showGridChk" checked onchange="onShowGridChange()">
+              <span class="tslider"></span>
+              <span class="tlabel" style="font-size:12px">3×3 격자 표시</span>
+            </label>
+            <label class="toggle" style="margin-left:0">
+              <input type="checkbox" id="showRefinedChk" onchange="onShowRefinedChange()">
+              <span class="tslider"></span>
+              <span class="tlabel" style="font-size:12px">2×2 정밀 격자</span>
+            </label>
+          </div>
+          <!-- Best/Worst/Final info -->
+          <div class="phys-mini" style="line-height:2">
+            <div><span class="pk">🟢 최적: </span><span class="pv" id="bestPointInfo">—</span></div>
+            <div><span class="pk">🔴 최악: </span><span class="pv" id="worstPointInfo">—</span></div>
+            <div><span class="pk">⭐ 최종: </span><span class="pv" id="finalPointInfo">—</span></div>
+          </div>
+          <!-- Accuracy alpha slider -->
+          <div style="margin-top:10px">
+            <div style="font-size:11px;color:var(--tx3);font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">정확도 (α: 최악→최적)</div>
+            <div class="sl-row">
+              <label style="min-width:40px">α</label>
+              <input type="range" id="accAlphaSlider" min="0" max="1" step="0.01" value="1.0"
+                oninput="onAccAlphaChange(this.value)">
+              <span class="sl-val" id="accAlphaVal">1.00</span>
+            </div>
+            <div style="font-size:10px;color:var(--tx3);margin-top:2px">0=최악(수비수쪽) · 1=최적(안전지점) · 실제는 정확도 점수로 자동계산</div>
+          </div>
+        </div>
+
+        <!-- Pass Options Section -->
+        <div class="ctrl-section">
+          <div class="ctrl-label">패스 옵션</div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">수비 압박</div>
+            <div class="mode-row" id="pressureRow">
+              <button class="mode-btn active" data-p="0" onclick="setPressure(0)">0</button>
+              <button class="mode-btn" data-p="1" onclick="setPressure(1)">1</button>
+              <button class="mode-btn" data-p="2" onclick="setPressure(2)">2</button>
+              <button class="mode-btn" data-p="3" onclick="setPressure(3)">3+</button>
+            </div>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2)">
+              <input type="checkbox" id="oneTouchChk" onchange="onOneTouchChange()" style="accent-color:var(--ac)">
+              원터치 패스
+            </label>
+          </div>
+          <div class="sl-row ot-row hidden" id="otAngleRow">
+            <label>원터치 각도</label>
+            <input type="range" id="otAngleSlider" min="0" max="180" step="1" value="45"
+              oninput="onOtAngleSlider(this.value)">
+            <span class="sl-val" id="otAngleVal">45°</span>
+          </div>
+        </div>
+
+        <!-- Heatmap Section -->
+        <div class="ctrl-section" style="padding:10px 16px">
+          <label class="toggle" style="margin-left:0;justify-content:flex-start">
+            <input type="checkbox" id="heatmapToggle" onchange="onHeatmapToggle()">
+            <span class="tslider"></span>
+            <span class="tlabel">히트맵 표시</span>
+          </label>
+        </div>
+
+        <!-- Score Results Section -->
+        <div class="ctrl-section">
+          <div class="ctrl-label">점수 결과</div>
+          <div class="score-bars">
+            <div class="score-item">
+              <div class="score-hd">
+                <span class="score-name">궤적 안전도</span>
+                <span class="score-val" id="sv-path">—</span>
+              </div>
+              <div class="score-track"><div class="score-fill" id="sf-path" style="width:0%"></div></div>
+            </div>
+            <div class="score-item">
+              <div class="score-hd">
+                <span class="score-name">기준점 안전도</span>
+                <span class="score-val" id="sv-point">—</span>
+              </div>
+              <div class="score-track"><div class="score-fill" id="sf-point" style="width:0%"></div></div>
+            </div>
+            <div class="score-item">
+              <div class="score-hd">
+                <span class="score-name">리시버 안전도</span>
+                <span class="score-val" id="sv-recv">—</span>
+              </div>
+              <div class="score-track"><div class="score-fill" id="sf-recv" style="width:0%"></div></div>
+            </div>
+            <div class="score-item">
+              <div class="score-hd">
+                <span class="score-name">공격 지향</span>
+                <span class="score-val" id="sv-off">—</span>
+              </div>
+              <div class="score-track"><div class="score-fill" id="sf-off" style="width:0%"></div></div>
+            </div>
+            <div class="score-item">
+              <div class="score-hd">
+                <span class="score-name">패스 정확도</span>
+                <span class="score-val" id="sv-acc">—</span>
+              </div>
+              <div class="score-track"><div class="score-fill" id="sf-acc" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div class="score-summary" id="scoreSummary" style="margin:0 0 12px">—</div>
+        </div>
+      </div>
+
+      <!-- GlobalConst sliders -->
+      <div class="card">
+        <div class="coll-hd" onclick="toggleColl(this)">
+          <h2 style="font-size:14px;font-weight:600">GlobalConstPass 파라미터</h2>
+          <span class="tag">GlobalConstPass.json</span>
+          <span class="coll-arr">▼</span>
+        </div>
+        <div class="coll-body">
+          <div class="gc-grid" id="gcGrid"></div>
+          <div class="sr">
+            <button class="sb s" onclick="reloadGC()">↺ 다시 로드</button>
+            <button class="sb p" onclick="saveGC()">저장</button>
+            <button class="sb s git-btn" onclick="gitCommit()">Git Commit</button>
+            <button class="sb s git-btn" onclick="gitPush()">Push</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+const JFILE = 'GlobalConstPass';
+const SCALE = 8;   // px per meter
+const W_M = 105, H_M = 68;
+const CW = W_M * SCALE, CH = H_M * SCALE; // 840, 544
+
+// px ↔ meters
+const fx = mx => (mx + 52.5) * SCALE;
+const fy = my => (34 - my) * SCALE;
+const mx_f = cx => cx / SCALE - 52.5;
+const my_f = cy => 34 - cy / SCALE;
+
+// ─── State ────────────────────────────────────────────────────────────
+let gc = {};           // GlobalConstPass values
+let gcOrig = {};       // original loaded values
+let chars = [];        // all characters
+let passer = null;     // selected character object
+
+let posP = { x: -15, y: 0 };   // passer position
+let posR = { x: 5, y: 0 };     // receiver position
+let defenders = [               // up to 6 defenders
+  { x: 8, y: 3, id: 1 },
+  { x: 10, y: -2, id: 2 },
+];
+let defIdCounter = 3;
+let dragging = null;   // { type: 'P' | 'R' | 'D' | 'B', id? }
+let dbl_suppress = false;
+
+let facingAngleDeg = 0;
+let facingAutoMode = true;
+let pressureCount = 0;
+let isOneTouch = false;
+let oneTouchAngle = 45;
+let showHeatmap = false;
+
+let env = 'th';
+let writeToken = '';
+let writeProtected = null;
+
+// Offscreen canvas for heatmap layer
+let hmCanvas = null;
+let hmDirty = true;
+
+// BasePoint & Grid system
+let basePtMode = 'auto';         // 'auto' | 'manual'
+let posB = { x: 2, y: 0 };      // BasePoint (calculated or dragged)
+let receiverRunDirDeg = 45;      // receiver run direction (degrees, 0=right, 90=up)
+let penetrateLevel = 1;          // 1, 2, 3
+let receiver = null;             // receiver character object
+let candidatePoints = [];        // array of 9 scored candidate grid points
+let refinedPoints = [];          // array of 4 refined (2x2) points
+let bestPoint = null;            // highest total score candidate
+let worstPoint = null;           // lowest total score candidate
+let bestRefined = null;          // best of refined 4
+let finalPoint = null;           // interpolated result
+let accuracyAlpha = 1.0;         // 0~1 slider (1 = BestPoint, 0 = WorstPoint)
+let showGrid = true;             // show all 9 candidate points
+let showRefined = false;         // show the 4 refined points
+
+// GC slider config: [key, min, max, step, label]
+const GC_SLIDERS = [
+  ['pass_SafetyScore_Distance_Max', 2, 10, 0.5, '궤적/기준점 최대 유효 거리 (m)'],
+  ['pass_SafetyScore_Distance_Reduction_Weight', 0, 0.2, 0.005, '거리 감산 가중치 (B 계수)'],
+  ['pass_SafetyScore_Distance_Reduction_Max', 0, 6, 0.5, '거리 감산 최대값 (m)'],
+  ['pass_SafetyScore_Distance_Power', 0.5, 4, 0.5, '궤적 안전도 지수 (Power)'],
+  ['pass_SafetyScore_Distance_From_Rotation', 0, 3, 0.1, '로테이션 추가 거리 최대 (m)'],
+  ['pass_Safety_Receiver_Radius', 1, 8, 0.5, '리시버 안전 반경 (m)'],
+  ['pass_Safety_Receiver_Var', 0.3, 2, 0.1, '리시버 위험도 지수 (Var)'],
+  ['pass_Safety_Receiver_Max', 0.1, 1, 0.05, '리시버 1순위 가중치'],
+  ['pass_Safety_Receiver_Mid', 0.1, 0.8, 0.05, '리시버 2순위 가중치'],
+  ['pass_Safety_Receiver_Min', 0.05, 0.5, 0.05, '리시버 3순위 가중치'],
+  ['pass_Offense_Score_Max', 1, 8, 0.5, '공격 지향 최대 점수'],
+  ['pass_Accuracy_BaseScore_Default', 0, 0.5, 0.01, '정확도 기본 점수'],
+  ['pass_Accuracy_BaseScore_Stat_Weight', 0, 0.02, 0.001, '정확도 스탯 가중치'],
+  ['pass_Ground_ArrivalTime_Min', 0.05, 1.0, 0.05, '도달 시간 최소값 (s)'],
+  ['pass_Ground_ArrivalTime_Weight_Distance', 0.01, 0.3, 0.005, '거리당 도달 시간 (s/m)'],
+  ['pass_Ground_ArrivalTime_Ratio_GroundPass', 0.1, 1.0, 0.05, '도달 시간 스탯 감소 비율'],
+  ['pass_Ground_ArrivalTime_Weight_GroundPass', 0.001, 0.02, 0.001, '패스 스탯 감소 계수'],
+  ['pass_Ground_Receiver_Max_Move_Time', 0.5, 3.0, 0.1, '리시버 최대 이동 시간 (s)'],
+  ['pass_Ground_Advantage_Width_Default', 1, 10, 0.5, '후보 격자 기본 폭 (m) [spec: 4]'],
+  ['pass_Ground_Advantage_Depth_Default', 1, 10, 0.5, '후보 격자 기본 깊이 (m) [spec: 3]'],
+  ['pass_Ground_Advantage_Width_Weight', 0, 0.05, 0.002, '폭 스탯 가중치 (m/스탯) [spec: 0.01]'],
+  ['pass_Ground_Advantage_Depth_Weight', 0, 0.05, 0.002, '깊이 스탯 가중치 (m/스탯) [spec: 0.01]'],
+  ['pass_Ground_Consider_ratio', 0, 1, 0.05, '격자 점수 비율 (안전지향 vs 궤적안전)'],
+];
+
+// ─── Math Helpers ─────────────────────────────────────────────────────
+
+function vecDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function vecNorm(v) { const l = Math.hypot(v.x, v.y); return l > 0 ? { x: v.x / l, y: v.y / l } : { x: 1, y: 0 }; }
+function vecSub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
+function vecDot(a, b) { return a.x * b.x + a.y * b.y; }
+
+function angleBetweenVecs(a, b) {
+  const dot = Math.max(-1, Math.min(1, vecDot(vecNorm(a), vecNorm(b))));
+  return Math.acos(dot); // 0..PI
+}
+
+function closestPtOnSeg(pt, a, b) {
+  const ab = vecSub(b, a), ap = vecSub(pt, a);
+  const len2 = ab.x * ab.x + ab.y * ab.y;
+  if (len2 === 0) return { t: 0, pt: { ...a }, dist: vecDist(pt, a) };
+  const t = Math.max(0, Math.min(1, (ap.x * ab.x + ap.y * ab.y) / len2));
+  const closest = { x: a.x + t * ab.x, y: a.y + t * ab.y };
+  return { t, pt: closest, dist: vecDist(pt, closest) };
+}
+
+// ─── Score Calculations ────────────────────────────────────────────────
+
+function calcPathSafety(passerPos, receiverPos, defs, g) {
+  if (defs.length === 0) return 1.0;
+
+  const entries = defs.map(d => {
+    const { t, pt: closestPt, dist: A } = closestPtOnSeg(d, passerPos, receiverPos);
+    const B = t * vecDist(passerPos, receiverPos); // distance along path from passer
+
+    // Rotation bonus: defender faces passer, must rotate to intercept path
+    const defFacing = vecNorm(vecSub(passerPos, d));       // defender looks toward passer
+    const dirToClosest = vecNorm(vecSub(closestPt, d));
+    const rotAngle = angleBetweenVecs(defFacing, dirToClosest); // 0..PI
+    const rotBonus = (rotAngle / Math.PI) * (g.pass_SafetyScore_Distance_From_Rotation || 1.5);
+
+    const reduction = Math.min(
+      B * (g.pass_SafetyScore_Distance_Reduction_Weight || 0.05),
+      g.pass_SafetyScore_Distance_Reduction_Max || 3
+    );
+    const relativeDist = Math.max(0, A + rotBonus - reduction);
+    const score = Math.pow(
+      Math.min(relativeDist / (g.pass_SafetyScore_Distance_Max || 5), 1),
+      g.pass_SafetyScore_Distance_Power || 1
+    );
+    return { A, score };
+  });
+
+  // Sort by A ascending, take top 3
+  entries.sort((a, b) => a.A - b.A);
+  const top3 = entries.slice(0, 3);
+  return Math.min(...top3.map(e => e.score));
+}
+
+function calcPointSafety(passerPos, receiverPos, defs, g) {
+  if (defs.length === 0) return 1.0;
+
+  const entries = defs.map(d => {
+    const dist = vecDist(d, receiverPos);
+    const defFacing = vecNorm(vecSub(passerPos, d));
+    const dirToReceiver = vecNorm(vecSub(receiverPos, d));
+    const rotAngle = angleBetweenVecs(defFacing, dirToReceiver); // 0..PI
+    const rotBonus = (rotAngle / Math.PI) * (g.pass_SafetyScore_Distance_From_Rotation || 1.5);
+    const relativeDist = dist + rotBonus;
+    const score = Math.pow(Math.min(relativeDist / (g.pass_SafetyScore_Distance_Max || 5), 1), 3);
+    return { dist, score };
+  });
+
+  // Sort by dist ascending, take top 3
+  entries.sort((a, b) => a.dist - b.dist);
+  const top3 = entries.slice(0, 3);
+  return Math.min(...top3.map(e => e.score));
+}
+
+function calcReceiverSafety(receiverPos, defs, g) {
+  const radius = g.pass_Safety_Receiver_Radius || 4;
+  const varPow = g.pass_Safety_Receiver_Var || 0.8;
+  const w = [
+    g.pass_Safety_Receiver_Max || 0.5,
+    g.pass_Safety_Receiver_Mid || 0.3,
+    g.pass_Safety_Receiver_Min || 0.2
+  ];
+
+  const dangers = defs
+    .map(d => Math.max(0, 1 - Math.pow(vecDist(d, receiverPos) / radius, varPow)))
+    .sort((a, b) => b - a)
+    .slice(0, 3);
+
+  const totalDanger = (dangers[0] || 0) * w[0] + (dangers[1] || 0) * w[1] + (dangers[2] || 0) * w[2];
+  return 1 - totalDanger;
+}
+
+function calcOffenseScore(receiverPos, g) {
+  // Right goal at x=52.5, y=0
+  const goalDist = vecDist(receiverPos, { x: 52.5, y: 0 });
+  const maxDist = Math.hypot(105, 68); // field diagonal ~125m
+  const normalized = Math.max(0, 1 - goalDist / maxDist);
+  return normalized * (g.pass_Offense_Score_Max || 3);
+}
+
+function calcAccuracy(passAngle, pressCount, iOT, otAngle, stats, g) {
+  const statMax = 125;
+  const normPT = stats.passingTechnic / statMax;
+
+  const base = (g.pass_Accuracy_BaseScore_Default || 0.1) +
+               (g.pass_Accuracy_BaseScore_Stat_Weight || 0.008) * stats.passingTechnic;
+
+  // Angle penalty
+  let anglePenBase;
+  if (passAngle <= 45)        anglePenBase = 0;
+  else if (passAngle <= 90)   anglePenBase = g.pass_Accuracy_AngleScore_45_90  || -0.7;
+  else if (passAngle <= 135)  anglePenBase = g.pass_Accuracy_AngleScore_90_135 || -0.9;
+  else                        anglePenBase = g.pass_Accuracy_AngleScore_135_180 || -1.2;
+  const ptRatio = g.pass_Accuracy_AngleScore_PassingTechnic_Ratio || 0.2;
+  const angleScore = anglePenBase * (1 - ptRatio * normPT);
+
+  // Pressure penalty
+  let pressPenBase;
+  if (pressCount === 0)      pressPenBase = 0;
+  else if (pressCount === 1) pressPenBase = g.pass_Accuracy_PressureScore_1 || -0.7;
+  else if (pressCount === 2) pressPenBase = g.pass_Accuracy_PressureScore_2 || -0.9;
+  else                       pressPenBase = g.pass_Accuracy_PressureScore_3_Over || -1.0;
+  const compRatio = g.pass_Accuracy_PressureScore_PassingTechnic_Ratio || 0.2;
+  const normComp = stats.composure / statMax;
+  const pressScore = pressPenBase * (1 - compRatio * normComp);
+
+  // One-touch penalty
+  let otScore = 0;
+  if (iOT) {
+    let otPenBase;
+    if (otAngle <= 67.5)       otPenBase = g.pass_Accuracy_OneTouchScore_0_67_5    || -0.6;
+    else if (otAngle <= 112.5) otPenBase = g.pass_Accuracy_OneTouchScore_67_5_112_5 || -1.0;
+    else                       otPenBase = g.pass_Accuracy_OneTouchScore_112_5_180   || -1.2;
+    const ftRatio = g.pass_Accuracy_OneTouchScore_FirstTouch_Weight || 0.01;
+    const normFT = stats.firstTouch / statMax;
+    otScore = otPenBase * (1 - ftRatio * normFT);
+  }
+
+  return base + angleScore + pressScore + otScore;
+}
+
+// ─── BasePoint & Grid ─────────────────────────────────────────────────────
+
+function calcArrivalTime(dist, passerStats, g) {
+  const min    = g.pass_Ground_ArrivalTime_Min || 0.2;
+  const wDist  = g.pass_Ground_ArrivalTime_Weight_Distance || 0.12;
+  const wStat  = g.pass_Ground_ArrivalTime_Weight_GroundPass || 0.009;
+  const ratio  = g.pass_Ground_ArrivalTime_Ratio_GroundPass || 0.65;
+  const stat   = passerStats.passingTechnic || 70;
+  return Math.max(0.1, (min + dist * wDist) * (1 - stat * wStat * ratio));
+}
+
+function calcBasePointAuto(passerPos, receiverPos, runDirDeg, lvl, passerStats, receiverStats, g) {
+  const dist    = vecDist(passerPos, receiverPos);
+  const arrTime = calcArrivalTime(dist, passerStats, g);
+
+  const lvlWeights = [
+    g['pass_Ground_Receiver_MoveTime_Weight_Penetrate_Level_1'] ||
+    g['pass_Ground_Receiver_Move_Time_Weight_Penetrate_Level_1'] || 1.0,
+    g['pass_Ground_Receiver_MoveTime_Weight_Penetrate_Level_2'] ||
+    g['pass_Ground_Receiver_Move_Time_Weight_Penetrate_Level_2'] || 1.0,
+    g['pass_Ground_Receiver_MoveTime_Weight_Penetrate_Level_3'] ||
+    g['pass_Ground_Receiver_Move_Time_Weight_Penetrate_Level_3'] || 0.8,
+  ];
+  const maxMove = g.pass_Ground_Receiver_Max_Move_Time || 1.5;
+  const moveTime = Math.min(arrTime * lvlWeights[lvl - 1], maxMove);
+
+  // Receiver run speed: approximate from speed stat
+  const speedStat = (receiverStats && receiverStats.speed) ? receiverStats.speed : 70;
+  const fwdSpd    = (g.run_Forward_Spd_Default || 900) / 100;
+  const runSpd    = fwdSpd * (speedStat / (g.commonStat_Max || 125));
+
+  const runRad = runDirDeg * Math.PI / 180;
+  const runDir = { x: Math.cos(runRad), y: Math.sin(runRad) };
+  const moveDist = moveTime * runSpd;
+
+  return {
+    x: Math.max(-52.5, Math.min(52.5, receiverPos.x + runDir.x * moveDist)),
+    y: Math.max(-34,   Math.min(34,   receiverPos.y + runDir.y * moveDist))
+  };
+}
+
+function generateCandidateGrid(basePoint, receiverPos, passerStats, g, gridN, sizeOverride) {
+  const stat  = passerStats.passingTechnic || 70;
+  const w     = sizeOverride ? sizeOverride[0] : (g.pass_Ground_Advantage_Width_Default || 4) + stat * (g.pass_Ground_Advantage_Width_Weight || 0.01);
+  const d     = sizeOverride ? sizeOverride[1] : (g.pass_Ground_Advantage_Depth_Default || 3) + stat * (g.pass_Ground_Advantage_Depth_Weight || 0.01);
+  const n     = gridN || 3;
+  const wScale = w / n;
+  const dScale = d / n;
+
+  // Depth direction: receiver → basePoint
+  const depthDir = vecDist(basePoint, receiverPos) > 0.01
+    ? vecNorm(vecSub(basePoint, receiverPos))
+    : { x: 1, y: 0 };
+  const widthDir = { x: -depthDir.y, y: depthDir.x };
+
+  const pts = [];
+  for (let di = 0; di < n; di++) {
+    for (let wi = 0; wi < n; wi++) {
+      const dOff = dScale * (1 - n + 2 * di) / 2;
+      const wOff = wScale * (1 - n + 2 * wi) / 2;
+      pts.push({
+        x: Math.max(-52.5, Math.min(52.5, basePoint.x + depthDir.x * dOff + widthDir.x * wOff)),
+        y: Math.max(-34,   Math.min(34,   basePoint.y + depthDir.y * dOff + widthDir.y * wOff)),
+        di, wi
+      });
+    }
+  }
+  return pts;
+}
+
+function scoreCandidatePoint(pt, passerPos, basePoint, defs, g) {
+  const pathSafety  = calcPathSafety(passerPos, pt, defs, g);
+  const pointSafety = calcPointSafety(passerPos, pt, defs, g);
+  const safety      = Math.min(pathSafety, pointSafety);
+
+  // Orientation: discrete rank scoring (code: 1st=maxScore, 2nd=maxScore-delta, ..., 9th=1pt)
+  // This is called from scoreCandidatePoint per-point; rank is done in updateCandidateGrid after batch scoring
+  const orientation = Math.max(0, 1 - vecDist(pt, basePoint) / Math.max(vecDist(basePoint, passerPos) * 0.5, 0.1));
+
+  // Mix: Pass_Ground_Consider_ratio=0.4 (spec: Pass_Consider_Score * ratio + Pass_Path_Safety * (1-ratio))
+  const mixRatio = g.pass_Ground_Consider_ratio || 0.4;
+  const total    = (1 - mixRatio) * safety + mixRatio * orientation;
+
+  return { pathSafety, pointSafety, safety, orientation, total };
+}
+
+function updateCandidateGrid() {
+  const passerStats = {
+    passingTechnic: passer ? (passer.passingTechnic ?? 70) : 70,
+    composure:      passer ? (passer.composure      ?? 70) : 70,
+    firstTouch:     passer ? (passer.firstTouch     ?? 70) : 70,
+  };
+  const receiverStats = receiver ? receiver : null;
+
+  // 1. BasePoint
+  if (basePtMode === 'auto') {
+    posB = calcBasePointAuto(posP, posR, receiverRunDirDeg, penetrateLevel, passerStats, receiverStats, gc);
+  }
+
+  // 2. 3x3 candidate grid
+  candidatePoints = generateCandidateGrid(posB, posR, passerStats, gc, 3);
+  candidatePoints.forEach(pt => {
+    Object.assign(pt, scoreCandidatePoint(pt, posP, posB, defenders, gc));
+  });
+
+  // Discrete orientation ranking (game code: MarkPassOrientationScore — 1st=max, 2nd=max-delta, ...)
+  const mixRatio3 = gc.pass_Ground_Consider_ratio || 0.4;
+  const sortedByDist = [...candidatePoints].sort((a, b) => vecDist(a, posB) - vecDist(b, posB));
+  const orientDelta = 1.0 / candidatePoints.length;
+  sortedByDist.forEach((pt, rank) => {
+    pt.orientation = Math.max(0, 1.0 - orientDelta * rank);
+    pt.total = (1 - mixRatio3) * pt.safety + mixRatio3 * pt.orientation;
+  });
+
+  const sorted = [...candidatePoints].sort((a, b) => b.total - a.total);
+  bestPoint  = sorted[0];
+  worstPoint = sorted[sorted.length - 1];
+
+  // 3. 2x2 refinement: each cell = W/3 × D/3, total grid = 2W/3 × 2D/3 (per game code)
+  const _gW = (gc.pass_Ground_Advantage_Width_Default || 4) + passerStats.passingTechnic * (gc.pass_Ground_Advantage_Width_Weight || 0.01);
+  const _gD = (gc.pass_Ground_Advantage_Depth_Default || 3) + passerStats.passingTechnic * (gc.pass_Ground_Advantage_Depth_Weight || 0.01);
+  refinedPoints = generateCandidateGrid(bestPoint, posR, passerStats, gc, 2, [2 * _gW / 3, 2 * _gD / 3]);
+  refinedPoints.forEach(pt => {
+    Object.assign(pt, scoreCandidatePoint(pt, posP, posB, defenders, gc));
+  });
+  const sortedRef = [...refinedPoints].sort((a, b) => b.total - a.total);
+  bestRefined = sortedRef[0] || bestPoint;
+
+  // 4. Final point interpolation
+  if (bestPoint && worstPoint) {
+    finalPoint = {
+      x: worstPoint.x + (bestRefined.x - worstPoint.x) * accuracyAlpha,
+      y: worstPoint.y + (bestRefined.y - worstPoint.y) * accuracyAlpha,
+    };
+  } else {
+    finalPoint = { ...posR };
+  }
+}
+
+// ─── Facing direction helpers ──────────────────────────────────────────
+
+function getFacingVector() {
+  if (facingAutoMode) {
+    // Auto: face toward receiver
+    const d = vecSub(posR, posP);
+    return vecDist(posP, posR) > 0.01 ? vecNorm(d) : { x: 1, y: 0 };
+  }
+  // Manual: angle in degrees, 0=right, counterclockwise
+  const rad = facingAngleDeg * Math.PI / 180;
+  return { x: Math.cos(rad), y: Math.sin(rad) };
+}
+
+function getPassAngleDeg() {
+  const facing = getFacingVector();
+  const dirToReceiver = vecSub(posR, posP);
+  if (vecDist(posP, posR) < 0.01) return 0;
+  return angleBetweenVecs(facing, dirToReceiver) * 180 / Math.PI;
+}
+
+// ─── Update Scores ─────────────────────────────────────────────────────
+
+function updateScores() {
+  updateCandidateGrid();
+
+  const stats = {
+    passingTechnic: passer ? (passer.passingTechnic ?? passer.passing_technic ?? 70) : 70,
+    composure:      passer ? (passer.composure ?? 70) : 70,
+    firstTouch:     passer ? (passer.firstTouch ?? passer.first_touch ?? 70) : 70,
+  };
+  const passAngleDeg = getPassAngleDeg();
+
+  // Scores are for the FinalPoint (actual pass target)
+  const evalPt = finalPoint || posB;
+  const pathSafety  = calcPathSafety(posP, evalPt, defenders, gc);
+  const pointSafety = calcPointSafety(posP, evalPt, defenders, gc);
+  const recvSafety  = calcReceiverSafety(posR, defenders, gc);
+  const offScore    = calcOffenseScore(evalPt, gc);
+  const accuracy    = calcAccuracy(passAngleDeg, pressureCount, isOneTouch, oneTouchAngle, stats, gc);
+
+  setScoreBar('path',  pathSafety,  pathSafety,  1);
+  setScoreBar('point', pointSafety, pointSafety, 1);
+  setScoreBar('recv',  recvSafety,  recvSafety,  1);
+  const offMax = gc.pass_Offense_Score_Max || 3;
+  setScoreBar('off', offScore, offScore / offMax, offMax);
+  const accNorm = Math.max(0, Math.min(1, (accuracy + 2) / 2.3));
+  setScoreBar('acc', accuracy, accNorm, null);
+
+  const minSafety = Math.min(pathSafety, pointSafety, recvSafety);
+  const summary = document.getElementById('scoreSummary');
+  if (minSafety >= 0.7) {
+    summary.textContent = '✅ 안전한 패스'; summary.style.borderColor='rgba(52,211,153,0.4)'; summary.style.color='var(--gn)'; summary.style.background='rgba(52,211,153,0.06)';
+  } else if (minSafety >= 0.4) {
+    summary.textContent = '⚠️ 주의 필요'; summary.style.borderColor='rgba(251,191,36,0.4)'; summary.style.color='var(--yl)'; summary.style.background='rgba(251,191,36,0.06)';
+  } else {
+    summary.textContent = '❌ 위험한 패스'; summary.style.borderColor='rgba(248,113,113,0.4)'; summary.style.color='var(--rd)'; summary.style.background='rgba(248,113,113,0.06)';
+  }
+
+  // Update best/worst/final info
+  if (bestPoint) {
+    const el = document.getElementById('bestPointInfo');
+    if (el) el.textContent = `(${bestRefined.x.toFixed(1)}, ${bestRefined.y.toFixed(1)}) 점수: ${bestRefined.total.toFixed(2)}`;
+  }
+  if (worstPoint) {
+    const el = document.getElementById('worstPointInfo');
+    if (el) el.textContent = `(${worstPoint.x.toFixed(1)}, ${worstPoint.y.toFixed(1)}) 점수: ${worstPoint.total.toFixed(2)}`;
+  }
+  if (finalPoint) {
+    const el = document.getElementById('finalPointInfo');
+    if (el) el.textContent = `(${finalPoint.x.toFixed(1)}, ${finalPoint.y.toFixed(1)}) α=${accuracyAlpha.toFixed(2)}`;
+  }
+
+  // Display computed arrival time and move distance
+  const dist = vecDist(posP, posR);
+  const arrTime = calcArrivalTime(dist, stats, gc);
+  const el_arr = document.getElementById('arrTimeInfo');
+  const el_mov = document.getElementById('movDistInfo');
+  if (el_arr) el_arr.textContent = arrTime.toFixed(2);
+  if (el_mov) {
+    const speedStat = (receiver && receiver.speed) ? receiver.speed : 70;
+    const fwdSpd = (gc.run_Forward_Spd_Default || 900) / 100;
+    const runSpd = fwdSpd * (speedStat / (gc.commonStat_Max || 125));
+    const lvlWeights = [
+      gc['pass_Ground_Receiver_Move_Time_Weight_Penetrate_Level_1'] || 1.0,
+      gc['pass_Ground_Receiver_Move_Time_Weight_Penetrate_Level_2'] || 1.0,
+      gc['pass_Ground_Receiver_Move_Time_Weight_Penetrate_Level_3'] || 0.8,
+    ];
+    const maxMove = gc.pass_Ground_Receiver_Max_Move_Time || 1.5;
+    const moveTime = Math.min(arrTime * lvlWeights[penetrateLevel - 1], maxMove);
+    el_mov.textContent = (moveTime * runSpd).toFixed(1);
+  }
+
+  return { pathSafety, pointSafety };
+}
+
+function setScoreBar(id, rawVal, normVal, maxVal, isScore, isMaybe) {
+  const valEl = document.getElementById('sv-' + id);
+  const fillEl = document.getElementById('sf-' + id);
+  const n = Math.max(0, Math.min(1, normVal));
+  const hue = n * 120;
+  const color = `hsl(${hue},80%,55%)`;
+  fillEl.style.width = (n * 100).toFixed(1) + '%';
+  fillEl.style.background = color;
+  if (maxVal !== null && maxVal !== undefined && maxVal !== 1) {
+    valEl.textContent = rawVal.toFixed(2) + ' / ' + maxVal;
+  } else {
+    valEl.textContent = rawVal.toFixed(2);
+  }
+  valEl.style.color = color;
+}
+
+// ─── Safety line color ─────────────────────────────────────────────────
+
+function safetyColor(score) {
+  const hue = score * 120; // 0=red, 120=green
+  return `hsl(${hue.toFixed(0)},80%,60%)`;
+}
+
+// ─── Draw star helper ─────────────────────────────────────────────────
+
+function drawStar(ctx, cx, cy, r, strokeColor, fillColor) {
+  const spikes = 5;
+  const outerRadius = r;
+  const innerRadius = r * 0.45;
+  let rot = (Math.PI / 2) * 3;
+  const step = Math.PI / spikes;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    ctx.lineTo(
+      cx + Math.cos(rot) * outerRadius,
+      cy + Math.sin(rot) * outerRadius
+    );
+    rot += step;
+    ctx.lineTo(
+      cx + Math.cos(rot) * innerRadius,
+      cy + Math.sin(rot) * innerRadius
+    );
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────────────
+
+function buildHeatmap() {
+  if (!hmCanvas) {
+    hmCanvas = document.createElement('canvas');
+    hmCanvas.width = CW;
+    hmCanvas.height = CH;
+  }
+  const ctx = hmCanvas.getContext('2d');
+  ctx.clearRect(0, 0, CW, CH);
+
+  const step = 2; // meters
+  const pixStep = step * SCALE;
+
+  for (let mx = -52.5; mx < 52.5; mx += step) {
+    for (let my = -34; my < 34; my += step) {
+      const recvPos = { x: mx, y: my };
+      const pathS = calcPathSafety(posP, recvPos, defenders, gc);
+      const ptS   = calcPointSafety(posP, recvPos, defenders, gc);
+      const combined = 0.5 * pathS + 0.5 * ptS;
+      const hue = combined * 120;
+      ctx.fillStyle = `hsla(${hue.toFixed(0)},70%,50%,0.35)`;
+      ctx.fillRect(fx(mx), fy(my) - pixStep, pixStep, pixStep);
+    }
+  }
+  hmDirty = false;
+}
+
+// ─── Canvas Drawing ───────────────────────────────────────────────────
+
+function drawField() {
+  const canvas = document.getElementById('fieldCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Field background
+  ctx.fillStyle = '#1a4a2e';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Stripe pattern
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+    ctx.fillRect(i * (CW / 7), 0, CW / 7, CH);
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+
+  // Outer boundary
+  ctx.strokeRect(0, 0, CW, CH);
+
+  // Center line
+  ctx.beginPath(); ctx.moveTo(CW / 2, 0); ctx.lineTo(CW / 2, CH); ctx.stroke();
+
+  // Center circle (r=9.15m)
+  ctx.beginPath(); ctx.arc(CW / 2, CH / 2, 9.15 * SCALE, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath(); ctx.arc(CW / 2, CH / 2, 2, 0, Math.PI * 2); ctx.fill();
+
+  // Penalty areas (16.5m x 40.32m each side)
+  const pa = 16.5 * SCALE, pw = 40.32 * SCALE;
+  ctx.strokeRect(0, (CH - pw) / 2, pa, pw);
+  ctx.strokeRect(CW - pa, (CH - pw) / 2, pa, pw);
+
+  // Goal areas (5.5m x 18.32m)
+  const ga = 5.5 * SCALE, gw = 18.32 * SCALE;
+  ctx.strokeRect(0, (CH - gw) / 2, ga, gw);
+  ctx.strokeRect(CW - ga, (CH - gw) / 2, ga, gw);
+
+  // Goals
+  const goalH = 7.32 * SCALE, goalD = 2.4 * SCALE;
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.strokeRect(-goalD, (CH - goalH) / 2, goalD, goalH);
+  ctx.strokeRect(CW, (CH - goalH) / 2, goalD, goalH);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+
+  // ── Heatmap layer ──
+  if (showHeatmap) {
+    if (hmDirty) buildHeatmap();
+    ctx.drawImage(hmCanvas, 0, 0);
+  }
+
+  // ── Defender safety circles ──
+  const defSafeR = (gc.pass_SafetyScore_Distance_Max || 5) * SCALE;
+  defenders.forEach(d => {
+    ctx.beginPath();
+    ctx.arc(fx(d.x), fy(d.y), defSafeR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(248,113,113,0.05)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(248,113,113,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // ── Receiver safety circle ──
+  const recvSafeR = (gc.pass_Safety_Receiver_Radius || 4) * SCALE;
+  ctx.beginPath();
+  ctx.arc(fx(posR.x), fy(posR.y), recvSafeR, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(52,211,153,0.07)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(52,211,153,0.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // ── Update scores (also computes candidate grid & finalPoint) ──
+  const { pathSafety, pointSafety } = updateScores();
+
+  // ── Draw receiver run direction arrow ──
+  const runRad = receiverRunDirDeg * Math.PI / 180;
+  const runDir = { x: Math.cos(runRad), y: Math.sin(runRad) };
+  const arrLen = 24;
+  ctx.beginPath();
+  ctx.moveTo(fx(posR.x), fy(posR.y));
+  ctx.lineTo(fx(posR.x) + runDir.x * arrLen, fy(posR.y) - runDir.y * arrLen);
+  ctx.strokeStyle = 'rgba(52,211,153,0.6)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── Grid drawing helper (draws filled cells + grid lines + score labels) ──
+  const _gStat = passer ? (passer.passingTechnic ?? 70) : 70;
+  const _gW = (gc.pass_Ground_Advantage_Width_Default || 4) + _gStat * (gc.pass_Ground_Advantage_Width_Weight || 0.01);
+  const _gD = (gc.pass_Ground_Advantage_Depth_Default || 3) + _gStat * (gc.pass_Ground_Advantage_Depth_Weight || 0.01);
+
+  function drawGridRect(bPt, rPos, totalW, totalD, n, pts, borderCol, fillAlpha) {
+    const dd = vecDist(bPt, rPos) > 0.01 ? vecNorm(vecSub(bPt, rPos)) : { x: 1, y: 0 };
+    const wd = { x: -dd.y, y: dd.x };
+    const cellD = totalD / n, cellW = totalW / n;
+    const dBnds = Array.from({length: n + 1}, (_, i) => -totalD / 2 + i * cellD);
+    const wBnds = Array.from({length: n + 1}, (_, i) => -totalW / 2 + i * cellW);
+    const gp = (dOff, wOff) => [fx(bPt.x + dd.x * dOff + wd.x * wOff), fy(bPt.y + dd.y * dOff + wd.y * wOff)];
+
+    // Cell fills
+    pts.forEach(pt => {
+      if (pt.di === undefined) return;
+      const { di, wi, total = 0 } = pt;
+      const c = [gp(dBnds[di], wBnds[wi]), gp(dBnds[di+1], wBnds[wi]), gp(dBnds[di+1], wBnds[wi+1]), gp(dBnds[di], wBnds[wi+1])];
+      ctx.beginPath(); ctx.moveTo(c[0][0], c[0][1]); c.slice(1).forEach(p => ctx.lineTo(p[0], p[1])); ctx.closePath();
+      ctx.fillStyle = `hsla(${(total * 120).toFixed(0)},65%,45%,${fillAlpha})`; ctx.fill();
+    });
+
+    // Inner grid lines
+    ctx.globalAlpha = 0.45; ctx.strokeStyle = borderCol; ctx.lineWidth = 0.8;
+    for (let i = 0; i <= n; i++) {
+      const [a, b] = [gp(dBnds[0], wBnds[i]), gp(dBnds[n], wBnds[i])];
+      const [c2, d2] = [gp(dBnds[i], wBnds[0]), gp(dBnds[i], wBnds[n])];
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c2[0], c2[1]); ctx.lineTo(d2[0], d2[1]); ctx.stroke();
+    }
+    // Outer border
+    ctx.globalAlpha = 1.0; ctx.strokeStyle = borderCol; ctx.lineWidth = 2;
+    const oc = [gp(dBnds[0], wBnds[0]), gp(dBnds[n], wBnds[0]), gp(dBnds[n], wBnds[n]), gp(dBnds[0], wBnds[n])];
+    ctx.beginPath(); ctx.moveTo(oc[0][0], oc[0][1]); oc.slice(1).forEach(p => ctx.lineTo(p[0], p[1])); ctx.closePath(); ctx.stroke();
+
+    // Score labels
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold 8px Inter,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    pts.forEach(pt => {
+      if (pt.di === undefined) return;
+      const { di, wi, total = 0 } = pt;
+      const ctr = gp((dBnds[di] + dBnds[di+1]) / 2, (wBnds[wi] + wBnds[wi+1]) / 2);
+      ctx.fillText(total.toFixed(2), ctr[0], ctr[1]);
+    });
+  }
+
+  // ── Draw 3×3 candidate grid rectangle ──
+  if (showGrid && candidatePoints.length === 9) {
+    drawGridRect(posB, posR, _gW, _gD, 3, candidatePoints, 'rgba(180,180,255,1.0)', 0.55);
+  } else {
+    console.log('[Grid] SKIP: showGrid=', showGrid, 'pts=', candidatePoints.length);
+  }
+
+  // ── Draw 2×2 refined grid (one cell subdivision of best 3×3 cell) ──
+  if (showRefined && refinedPoints.length === 4 && bestPoint) {
+    drawGridRect(bestPoint, posR, 2 * _gW / 3, 2 * _gD / 3, 2, refinedPoints, 'rgba(52,211,153,1.0)', 0.55);
+  }
+
+  // ── Draw BasePoint B ──
+  const bx = fx(posB.x), by = fy(posB.y);
+  ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2);
+  ctx.fillStyle = basePtMode === 'manual' ? 'rgba(251,191,36,0.2)' : 'rgba(200,200,200,0.15)';
+  ctx.fill();
+  ctx.strokeStyle = basePtMode === 'manual' ? '#fbbf24' : 'rgba(200,200,200,0.6)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([3, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 9px Inter,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('B', bx, by);
+
+  // ── Pass line P → FinalPoint ──
+  const safetyForLine = (candidatePoints.length > 0 && bestPoint) ? bestPoint.total : 0;
+  const lineColor = safetyColor(safetyForLine);
+  if (finalPoint) {
+    ctx.beginPath();
+    ctx.moveTo(fx(posP.x), fy(posP.y));
+    ctx.lineTo(fx(finalPoint.x), fy(finalPoint.y));
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ── Dashed line R → B ──
+  ctx.beginPath();
+  ctx.moveTo(fx(posR.x), fy(posR.y));
+  ctx.lineTo(bx, by);
+  ctx.strokeStyle = 'rgba(52,211,153,0.3)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── WorstPoint (dark red circle) ──
+  if (worstPoint) {
+    const wx = fx(worstPoint.x), wy = fy(worstPoint.y);
+    ctx.beginPath(); ctx.arc(wx, wy, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // ── BestRefined (bright green circle) ──
+  if (bestRefined) {
+    const bestx = fx(bestRefined.x), besty = fy(bestRefined.y);
+    ctx.beginPath(); ctx.arc(bestx, besty, 11, 0, Math.PI * 2);
+    ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+
+  // ── FinalPoint (star) ──
+  if (finalPoint) {
+    drawStar(ctx, fx(finalPoint.x), fy(finalPoint.y), 11, '#818cf8', 'rgba(129,140,248,0.2)');
+  }
+
+  // ── Passer facing direction indicator ──
+  const facing = getFacingVector();
+  const facingLen = 20; // px
+  const pxP = fx(posP.x), pyP = fy(posP.y);
+  ctx.beginPath();
+  ctx.moveTo(pxP, pyP);
+  ctx.lineTo(pxP + facing.x * facingLen, pyP - facing.y * facingLen);
+  ctx.strokeStyle = 'rgba(251,191,36,0.8)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Arrowhead
+  const aAngle = Math.atan2(-facing.y, facing.x);
+  const aLen = 6;
+  ctx.beginPath();
+  ctx.moveTo(pxP + facing.x * facingLen, pyP - facing.y * facingLen);
+  ctx.lineTo(
+    pxP + facing.x * facingLen - aLen * Math.cos(aAngle - 0.4),
+    pyP - facing.y * facingLen + aLen * Math.sin(aAngle - 0.4)
+  );
+  ctx.lineTo(
+    pxP + facing.x * facingLen - aLen * Math.cos(aAngle + 0.4),
+    pyP - facing.y * facingLen + aLen * Math.sin(aAngle + 0.4)
+  );
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(251,191,36,0.8)';
+  ctx.fill();
+
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+
+  // ── Defenders ──
+  defenders.forEach(d => {
+    const dx = fx(d.x), dy = fy(d.y);
+    ctx.beginPath(); ctx.arc(dx, dy, 12, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(248,113,113,0.2)';
+    ctx.fill();
+    ctx.strokeStyle = '#f87171';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px Inter,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('D' + d.id, dx, dy);
+  });
+
+  // ── Receiver ──
+  const rxP = fx(posR.x), ryP = fy(posR.y);
+  ctx.beginPath(); ctx.arc(rxP, ryP, 14, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(52,211,153,0.25)';
+  ctx.fill();
+  ctx.strokeStyle = '#34d399';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px Inter,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('R', rxP, ryP);
+
+  // ── Passer ──
+  ctx.beginPath(); ctx.arc(pxP, pyP, 14, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(251,191,36,0.25)';
+  ctx.fill();
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px Inter,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('P', pxP, pyP);
+}
+
+// ─── Canvas Interaction ───────────────────────────────────────────────
+
+function initCanvas() {
+  const canvas = document.getElementById('fieldCanvas');
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('mouseleave', onMouseUp);
+  canvas.addEventListener('dblclick', onDblClick);
+  drawField();
+}
+
+function resetPositions() {
+  posP = { x: -15, y: 0 };
+  posR = { x: 5, y: 0 };
+  posB = { x: 12, y: 5 };
+  defenders = [
+    { x: 8, y: 3, id: 1 },
+    { x: 10, y: -2, id: 2 },
+  ];
+  defIdCounter = 3;
+  hmDirty = true;
+  drawField();
+}
+
+function getCanvasPos(e) {
+  const r = e.target.getBoundingClientRect();
+  return { cx: e.clientX - r.left, cy: e.clientY - r.top };
+}
+
+function hitTest(cx, cy, pos, r) {
+  return Math.hypot(cx - fx(pos.x), cy - fy(pos.y)) < r;
+}
+
+function onMouseDown(e) {
+  const { cx, cy } = getCanvasPos(e);
+
+  // Check P
+  if (hitTest(cx, cy, posP, 16)) { dragging = { type: 'P' }; return; }
+  // Check R
+  if (hitTest(cx, cy, posR, 16)) { dragging = { type: 'R' }; return; }
+  // Check B (manual mode only)
+  if (basePtMode === 'manual' && hitTest(cx, cy, posB, 14)) {
+    dragging = { type: 'B' };
+    return;
+  }
+  // Check defenders
+  for (const d of defenders) {
+    if (hitTest(cx, cy, d, 14)) { dragging = { type: 'D', id: d.id }; return; }
+  }
+
+  // No entity hit → add new defender (max 6)
+  if (defenders.length < 6) {
+    const nmx = Math.max(-52.5, Math.min(52.5, mx_f(cx)));
+    const nmy = Math.max(-34, Math.min(34, my_f(cy)));
+    defenders.push({ x: nmx, y: nmy, id: defIdCounter++ });
+    hmDirty = true;
+    drawField();
+  }
+}
+
+function onMouseMove(e) {
+  if (!dragging) return;
+  const { cx, cy } = getCanvasPos(e);
+  const nmx = Math.max(-52.5, Math.min(52.5, mx_f(cx)));
+  const nmy = Math.max(-34, Math.min(34, my_f(cy)));
+
+  if (dragging.type === 'P') {
+    posP = { x: nmx, y: nmy };
+  } else if (dragging.type === 'R') {
+    posR = { x: nmx, y: nmy };
+  } else if (dragging.type === 'B') {
+    posB = { x: nmx, y: nmy };
+  } else if (dragging.type === 'D') {
+    const d = defenders.find(x => x.id === dragging.id);
+    if (d) { d.x = nmx; d.y = nmy; }
+  }
+  hmDirty = true;
+  drawField();
+}
+
+function onMouseUp() { dragging = null; }
+
+function onDblClick(e) {
+  const { cx, cy } = getCanvasPos(e);
+  const idx = defenders.findIndex(d => hitTest(cx, cy, d, 14));
+  if (idx !== -1) {
+    defenders.splice(idx, 1);
+    hmDirty = true;
+    drawField();
+  }
+}
+
+// ─── UI Controls ──────────────────────────────────────────────────────
+
+function onFacingSlider(val) {
+  facingAngleDeg = parseFloat(val);
+  facingAutoMode = false;
+  document.getElementById('facingLabel').textContent = '방향 각도';
+  document.getElementById('facingVal').textContent = facingAngleDeg + '°';
+  drawField();
+}
+
+function resetFacingAuto() {
+  facingAutoMode = true;
+  facingAngleDeg = 0;
+  document.getElementById('facingSlider').value = 0;
+  document.getElementById('facingLabel').textContent = '자동 (리시버 방향)';
+  document.getElementById('facingVal').textContent = 'auto';
+  drawField();
+}
+
+function setPressure(count) {
+  pressureCount = count;
+  document.querySelectorAll('#pressureRow .mode-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.p) === count);
+  });
+  drawField();
+}
+
+function onOneTouchChange() {
+  isOneTouch = document.getElementById('oneTouchChk').checked;
+  const row = document.getElementById('otAngleRow');
+  row.classList.toggle('hidden', !isOneTouch);
+  drawField();
+}
+
+function onOtAngleSlider(val) {
+  oneTouchAngle = parseFloat(val);
+  document.getElementById('otAngleVal').textContent = oneTouchAngle + '°';
+  drawField();
+}
+
+function onHeatmapToggle() {
+  showHeatmap = document.getElementById('heatmapToggle').checked;
+  hmDirty = true;
+  drawField();
+}
+
+// ─── BasePoint Controls ───────────────────────────────────────────────
+
+function setBasePtMode(mode) {
+  basePtMode = mode;
+  document.getElementById('bpModeAuto').classList.toggle('active', mode === 'auto');
+  document.getElementById('bpModeManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('autoModeControls').style.display = mode === 'auto' ? '' : 'none';
+  hmDirty = true;
+  drawField();
+}
+
+function onReceiverChange() {
+  const name = document.getElementById('selReceiver').value;
+  receiver = chars.find(c => c.name === name) || null;
+  document.getElementById('sR-spd').textContent = receiver ? (receiver.speed ?? '—') : '—';
+  hmDirty = true;
+  drawField();
+}
+
+function onRecvRunDirChange(val) {
+  receiverRunDirDeg = parseFloat(val);
+  document.getElementById('recvRunDirVal').textContent = val + '°';
+  document.getElementById('sR-dir').textContent = val + '°';
+  hmDirty = true;
+  drawField();
+}
+
+function setPenetrateLevel(lv) {
+  penetrateLevel = lv;
+  document.querySelectorAll('#penetrateRow .mode-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.lv) === lv);
+  });
+  hmDirty = true;
+  drawField();
+}
+
+function onShowGridChange() {
+  showGrid = document.getElementById('showGridChk').checked;
+  drawField();
+}
+
+function onShowRefinedChange() {
+  showRefined = document.getElementById('showRefinedChk').checked;
+  drawField();
+}
+
+function onAccAlphaChange(val) {
+  accuracyAlpha = parseFloat(val);
+  document.getElementById('accAlphaVal').textContent = parseFloat(val).toFixed(2);
+  drawField();
+}
+
+// ─── Passer Character ─────────────────────────────────────────────────
+
+function onPasserChange() {
+  const name = document.getElementById('selPasser').value;
+  passer = chars.find(c => c.name === name) || null;
+  updatePasserStats();
+  drawField();
+}
+
+function updatePasserStats() {
+  const pt = passer ? (passer.passingTechnic ?? passer.passing_technic ?? 70) : null;
+  const co = passer ? (passer.composure ?? 70) : null;
+  const ft = passer ? (passer.firstTouch ?? passer.first_touch ?? 70) : null;
+  document.getElementById('sPT').textContent = pt !== null ? pt : '—';
+  document.getElementById('sCO').textContent = co !== null ? co : '—';
+  document.getElementById('sFT').textContent = ft !== null ? ft : '—';
+}
+
+// ─── Initialization ───────────────────────────────────────────────────
+
+async function init() {
+  await loadConfig();
+  await Promise.all([loadChars(), loadGC()]);
+  initCanvas();
+}
+
+async function loadConfig() {
+  try {
+    const r = await fetch(`${API}/config`);
+    const d = await r.json();
+    env = d.default_env || 'th';
+    const envSel = document.getElementById('envSel');
+    (d.environments || [env]).forEach(e => {
+      const o = document.createElement('option');
+      o.value = e; o.text = e;
+      if (e === env) o.selected = true;
+      envSel.appendChild(o);
+    });
+  } catch (e) { console.warn('config load failed', e); }
+}
+
+async function loadChars() {
+  try {
+    const r = await fetch(`${API}/characters?env=${env}`);
+    if (!r.ok) { showToast(`캐릭터 로드 실패: HTTP ${r.status}`, 'err'); return; }
+    const d = await r.json();
+    if (d.error) { showToast(`캐릭터 오류: ${d.error}`, 'err'); return; }
+    chars = d.characters || [];
+    if (chars.length === 0) showToast('캐릭터 데이터 없음 (빈 응답)', 'err');
+    refreshCharList();
+  } catch (e) {
+    showToast(`캐릭터 로드 예외: ${e.message}`, 'err');
+    console.error('chars load failed', e);
+  }
+}
+
+function refreshCharList() {
+  const prev = document.getElementById('selPasser').value;
+  const prevR = document.getElementById('selReceiver').value;
+  ['selPasser', 'selReceiver'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = `<option value="">${id === 'selPasser' ? '캐릭터 선택...' : '리시버 캐릭터...'}</option>`;
+    chars.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.name; o.text = c.name;
+      sel.appendChild(o);
+    });
+  });
+  document.getElementById('selPasser').value = prev;
+  document.getElementById('selReceiver').value = prevR;
+  onPasserChange();
+  onReceiverChange();
+}
+
+async function loadGC() {
+  try {
+    const r = await fetch(`${API}/load?file=${JFILE}&env=${env}`);
+    const d = await r.json();
+    gc = d.data || {};
+    gcOrig = JSON.parse(JSON.stringify(gc));
+    renderGCSliders();
+    hmDirty = true;
+    drawField();
+  } catch (e) { console.warn('GC load failed', e); }
+}
+
+async function reloadGC() {
+  await loadGC();
+  showToast('다시 로드됨', 'ok');
+}
+
+function onEnvChange() {
+  env = document.getElementById('envSel').value;
+  Promise.all([loadChars(), loadGC()]);
+}
+
+// ─── Write Token ──────────────────────────────────────────────────────
+
+async function getWriteToken() {
+  if (writeToken) return writeToken;
+  if (writeProtected === null) {
+    try {
+      const r = await fetch(`${API}/writable`);
+      const d = await r.json();
+      writeProtected = d.protected || false;
+    } catch (e) { writeProtected = false; }
+  }
+  if (writeProtected) writeToken = prompt('쓰기 토큰 입력:') || '';
+  return writeToken;
+}
+
+// ─── GlobalConst Sliders ─────────────────────────────────────────────
+
+function renderGCSliders() {
+  const grid = document.getElementById('gcGrid');
+  grid.innerHTML = '';
+  GC_SLIDERS.forEach(([key, min, max, step, label]) => {
+    const val = gc[key] !== undefined ? gc[key] : 0;
+    const div = document.createElement('div');
+    div.className = 'gc-item';
+    div.innerHTML = `
+      <div class="gck">${key}</div>
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:2px">${label}</div>
+      <div class="gcv-row">
+        <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+          id="sl_${key}" oninput="onSlider('${key}',this.value)">
+        <span class="gcv" id="gv_${key}">${formatGCVal(val)}</span>
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+function formatGCVal(v) {
+  return typeof v === 'number' ? (v % 1 === 0 ? v.toString() : parseFloat(v.toFixed(4)).toString()) : v;
+}
+
+function onSlider(key, val) {
+  const numVal = parseFloat(val);
+  gc[key] = numVal;
+  const el = document.getElementById('gv_' + key);
+  el.textContent = formatGCVal(numVal);
+  el.className = 'gcv' + (gcOrig[key] !== numVal ? ' changed' : '');
+  hmDirty = true;
+  drawField();
+}
+
+async function saveGC() {
+  const patch = {};
+  GC_SLIDERS.forEach(([key]) => { if (gc[key] !== gcOrig[key]) patch[key] = gc[key]; });
+  if (!Object.keys(patch).length) { showToast('변경 없음', 'ok'); return; }
+  const token = await getWriteToken();
+  try {
+    const r = await fetch(`${API}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Write-Token': token },
+      body: JSON.stringify({ file: JFILE, env, patch })
+    });
+    const d = await r.json();
+    if (d.ok) { gcOrig = JSON.parse(JSON.stringify(gc)); renderGCSliders(); showToast('저장 완료', 'ok'); }
+    else showToast(d.error || '저장 실패', 'err');
+  } catch (e) { showToast('저장 오류', 'err'); }
+}
+
+async function gitCommit() {
+  const token = await getWriteToken();
+  try {
+    const r = await fetch(`${API}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Write-Token': token },
+      body: JSON.stringify({ action: 'commit', env, message: `balance: pass params update (${env})` })
+    });
+    const d = await r.json();
+    showToast(d.ok ? 'Committed' : (d.output || 'Commit 실패'), d.ok ? 'ok' : 'err');
+  } catch (e) { showToast('Git 오류', 'err'); }
+}
+
+async function gitPush() {
+  const token = await getWriteToken();
+  try {
+    const r = await fetch(`${API}/git`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Write-Token': token },
+      body: JSON.stringify({ action: 'push', env })
+    });
+    const d = await r.json();
+    showToast(d.ok ? 'Pushed' : (d.output || 'Push 실패'), d.ok ? 'ok' : 'err');
+  } catch (e) { showToast('Git 오류', 'err'); }
+}
+
+// ─── Collapsible ─────────────────────────────────────────────────────
+
+function toggleColl(hd) {
+  const body = hd.nextElementSibling;
+  const arr = hd.querySelector('.coll-arr');
+  body.classList.toggle('open');
+  arr.classList.toggle('open');
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'ok' ? 'var(--gn)' : 'var(--rd)';
+  t.style.color = '#000';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

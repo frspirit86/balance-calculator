@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<title>GK Balancing Dashboard</title>
+<script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.07);--bdh:rgba(255,255,255,0.12);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.08);--gn:#34d399;--yl:#fbbf24;--rd:#f87171;--r:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:600} header h1 span{color:var(--tx3);font-weight:400;margin-left:8px}
+  .badges{display:flex;gap:8px;align-items:center}
+  select.env-sel{background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer}
+  nav{display:flex;gap:2px;padding:8px 32px;border-bottom:1px solid var(--bd);background:var(--sf)}
+  nav a{color:var(--tx3);text-decoration:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+  nav a:hover{color:var(--tx2);background:var(--sf2)} nav a.active{color:var(--tx);background:var(--sf2)}
+  .container{max-width:1440px;margin:0 auto;padding:24px 32px}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+  .card-hd{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bd)}
+  .card-hd h2{font-size:14px;font-weight:600}
+  .tag{font-size:11px;color:var(--tx3);background:var(--bg);padding:3px 10px;border-radius:6px;font-weight:500}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:center;padding:10px 14px;font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);background:var(--sf)}
+  td{padding:10px 14px;text-align:center;font-size:13px;border-bottom:1px solid var(--bd);font-variant-numeric:tabular-nums}
+  .nm{text-align:left;font-weight:600;color:var(--tx)} .pct{color:var(--gn);font-weight:600}
+  .grids{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px}
+  .gp{background:var(--bg);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  .gt{padding:14px 18px;font-size:13px;font-weight:600;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+  .gt code{color:var(--ac);font-size:12px;background:var(--acbg);padding:2px 8px;border-radius:4px}
+  .gi{padding:12px 18px;font-size:12px;line-height:1.7;color:var(--tx2);border-bottom:1px solid var(--bd)}
+  .gi strong{color:var(--tx);font-weight:600;display:block;margin-bottom:2px}
+  .gi .ax{color:var(--tx3)} .gi .ax b{color:var(--tx2)}
+  .dw{width:100%;height:400px}
+  .sr{display:flex;gap:8px;padding:8px 14px;border-top:1px solid var(--bd)}
+  .sb{font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;transition:all .15s}
+  .sb.p{color:#fff;background:var(--ac);border-color:var(--ac)} .sb.p:hover{background:#6366f1}
+  .sb.s{color:var(--tx2);background:var(--sf2)} .sb.s:hover{color:var(--tx);border-color:var(--bdh)}
+  .git-btn{border-color:rgba(251,191,36,0.3)!important;color:var(--yl)!important}
+  .note{margin:0 20px 20px;padding:14px 18px;border-radius:10px;font-size:12px;line-height:1.7}
+  .note.info{background:rgba(129,140,248,0.06);border:1px solid rgba(129,140,248,0.15);color:var(--tx2)} .note.info b{color:var(--ac)}
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;padding:20px}
+  .ci{padding:14px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:10px} .ci:hover{border-color:var(--bdh)}
+  .ci .k{font-size:11px;color:var(--tx3);font-weight:500;margin-bottom:6px}
+  .ci .v{font-size:20px;font-weight:700;color:var(--tx)} .ci .f{font-size:10px;color:var(--tx3);margin-top:4px;font-family:monospace}
+  .toast{position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media(max-width:960px){.grids{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GK Balancing <span>Dashboard</span></h1>
+  <div class="badges"><span style="font-size:12px;color:var(--tx3)">환경:</span><select class="env-sel" id="envSel"></select></div>
+</header>
+<nav>
+  <a href="graph_defence.html">Defence</a>
+  <a class="active" href="graph_gk.html">GK</a>
+  <a href="graph_run.html">Run</a>
+  <a href="graph_pass.html">Pass</a>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <div class="card-hd"><h2>Catch Probability by Action</h2><span class="tag">시나리오별 캐칭 확률</span></div>
+    <table><thead><tr><th style="text-align:left">Action</th><th>Catch %</th><th>JSON Key</th></tr></thead><tbody id="catchTbl"></tbody></table>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><h2>GK Response Graphs</h2><span class="tag">Interactive — Desmos Sliders</span></div>
+    <div class="grids">
+      <div class="gp">
+        <div class="gt">슛 블록 반응 시간 <code>T_def + t × T_wt</code></div>
+        <div class="gi"><strong>반응 시간에 따른 슛 블록 성공률</strong><div class="ax"><b>X</b> 반응 시간 (초)&emsp;<b>Y</b> 블록 확률 (0~1)</div><div style="margin-top:4px;font-size:10px;color:var(--tx3)"><code style="color:var(--ac)">T_def</code> = <em>gK_ShootBlock_Time_Default</em>&emsp;<code style="color:var(--ac)">T_wt</code> = <em>gK_ShootBlock_Time_Weight</em></div></div>
+        <div class="dw" id="g1"></div>
+        <div class="sr"><button class="sb s" onclick="loadG(0)">📂 불러오기</button><button class="sb p" onclick="saveG(0)">💾 적용</button></div>
+      </div>
+      <div class="gp">
+        <div class="gt">슛 블록 거리 <code>1 − dist / D_max</code></div>
+        <div class="gi"><strong>슈팅 거리에 따른 블록 난이도</strong><div class="ax"><b>X</b> 거리 (cm)&emsp;<b>Y</b> 블록 확률 (0~1)</div><div style="margin-top:4px;font-size:10px;color:var(--tx3)"><code style="color:var(--ac)">D_max</code> = <em>gK_ShootBlock_Distance_Default</em></div></div>
+        <div class="dw" id="g2"></div>
+        <div class="sr"><button class="sb s" onclick="loadG(1)">📂 불러오기</button><button class="sb p" onclick="saveG(1)">💾 적용</button></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;padding:0 20px 12px;justify-content:flex-end;align-items:center">
+      <button class="sb s" onclick="loadFromRepo()">📂 불러오기</button>
+      <button class="sb s" onclick="revertAll()" style="border-color:rgba(248,113,113,0.3);color:var(--rd)">↩ 되돌리기</button>
+      <div style="width:16px"></div>
+      <button class="sb s" onclick="clipAll()">📋 복사</button>
+      <button class="sb p" onclick="saveToRepo()">💾 전체 적용</button>
+      <div style="width:16px"></div>
+      <button class="sb s git-btn" onclick="gitCommit()">⚡ Git Commit</button>
+    </div>
+
+    <div class="note info"><b>ℹ 편집 범위</b> — GlobalConstGK 테이블 변수만 조정·저장 가능. 공식 구조 변경은 F 시스템 트랙 B에서 처리합니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><h2>Key Constants</h2><span class="tag">GlobalConstGK.json — 현재 vs 커밋</span></div>
+    <div class="cgrid" id="cg"></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const API='http://127.0.0.1:9000/api', JFILE='GlobalConstGK';
+let ENV='th', gkData={}, g1, g2;
+const OPTS={expressions:true,settingsMenu:false,zoomButtons:true,keypad:false,expressionsCollapsed:true,backgroundColor:'#ffffff'};
+
+function toast(m,err){const t=document.getElementById('toast');t.textContent=m;t.style.background=err?'var(--rd)':'var(--gn)';t.style.color=err?'#fff':'#000';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+function readVal(g,v){return new Promise(r=>{const h=g.HelperExpression({latex:v});const cb=()=>{h.unobserve('numericValue');r(h.numericValue);};h.observe('numericValue',cb);})}
+
+const CATCH=[
+  {l:'Dribble',j:'dribble_Ball_Catch_Probability'},
+  {l:'Pass',j:'pass_Ball_Catch_Probability'},
+  {l:'Cross (Before Climax)',j:'cross_Ball_Before_Climax_Catch_Probability'},
+  {l:'Cross (After Climax)',j:'cross_Ball_After_Climax_Catch_Probability'},
+  {l:'Feint Ball',j:'feint_Ball_Catch_Probability'},
+  {l:'Feint After Touch',j:'feint_After_Touch_Catch_Probability'},
+  {l:'Pass Crossroad',j:'pass_Crossroad_Catch_Probability'},
+  {l:'AutoCut',j:'autoCut_Catching_Probability'},
+  {l:'ShootBlock Punching',j:'almost_Catching_Shootblock_Punching_Probability'},
+];
+
+const CONSTS=[
+  {k:'GK Response Default',j:'gK_Reponse_default'},
+  {k:'ShootBlock Distance',j:'gK_ShootBlock_Distance_Default'},
+  {k:'ShootBlock Time Default',j:'gK_ShootBlock_Time_Default'},
+  {k:'ShootBlock Time Weight',j:'gK_ShootBlock_Time_Weight'},
+  {k:'GoalIn Prob Default',j:'gK_GoalIn_Prob_Default'},
+  {k:'Front Plus Weight',j:'gK_FrontPlus_Weight'},
+  {k:'Outer Plus Weight',j:'gK_OuterPlus_Weight'},
+  {k:'Side Plus 1',j:'gK_SidePlus1_Weight'},
+  {k:'Side Plus 2',j:'gK_SidePlus2_Weight'},
+  {k:'Longshot Blind',j:'gK_LongshotBlind_Weight'},
+  {k:'CPAction Time',j:'gK_CPAction_Time'},
+  {k:'CPAction Distance',j:'gK_CPAction_Distance'},
+  {k:'Autocut Speed Max',j:'gK_Autocut_ballSpd_Max'},
+  {k:'Autocut Speed Min',j:'gK_Autocut_ballSpd_Min'},
+  {k:'Dribble Aggressive In',j:'dribble_AggressiveTime_In'},
+  {k:'Pass Aggressive In',j:'pass_AggressiveTime_In'},
+];
+
+async function init(){
+  const cfg=await(await fetch(`${API}/config`)).json();
+  const sel=document.getElementById('envSel');
+  cfg.environments.forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=e;if(e===cfg.default_env)o.selected=true;sel.appendChild(o);});
+  ENV=cfg.default_env;
+  sel.onchange=()=>{ENV=sel.value;reload();};
+  await reload();
+}
+
+async function reload(){
+  try{
+    const r=await(await fetch(`${API}/load?file=${JFILE}&env=${ENV}&t=${Date.now()}`)).json();
+    if(r.error){toast(`❌ ${r.error}`,1);return;}
+    gkData=r.data;
+  }catch(e){toast('❌ 서버 연결 실패',1);return;}
+  buildCatch(); buildGraphs(); await buildConsts();
+}
+
+function buildCatch(){
+  const tb=document.getElementById('catchTbl');tb.innerHTML='';
+  CATCH.forEach(d=>{
+    const v=gkData[d.j], pct=v!==undefined?(v*100).toFixed(1)+'%':'—';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="nm">${d.l}</td><td class="pct">${pct}</td><td style="font-size:10px;color:var(--tx3);font-family:monospace">${d.j}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function buildGraphs(){
+  if(g1)try{g1.destroy();}catch(e){}
+  if(g2)try{g2.destroy();}catch(e){}
+
+  const tD=gkData['gK_ShootBlock_Time_Default']||0.6;
+  const tW=gkData['gK_ShootBlock_Time_Weight']||0.8;
+  const dD=gkData['gK_ShootBlock_Distance_Default']||200;
+  const resp=gkData['gK_Reponse_default']||0.05;
+
+  g1=Desmos.GraphingCalculator(document.getElementById('g1'),OPTS);
+  g1.setMathBounds({left:0,right:2,bottom:-0.05,top:1.15});
+  g1.setExpression({id:'td',latex:`T_{def}=${tD}`,sliderBounds:{min:0,max:2,step:0.01}});
+  g1.setExpression({id:'tw',latex:`T_{wt}=${tW}`,sliderBounds:{min:0,max:2,step:0.01}});
+  g1.setExpression({id:'f',latex:`y=\\min(1,T_{def}+x\\cdot T_{wt})`,color:'#2563eb',lineWidth:3});
+  g1.setExpression({id:'ref',latex:'y=0.5',color:'#a1a1aa',lineStyle:Desmos.Styles.DASHED,lineWidth:1});
+  g1.setExpression({id:'resp',latex:`(${resp},\\min(1,T_{def}+${resp}\\cdot T_{wt}))`,color:'#ea580c',pointSize:12,label:`GK Response ${resp}s`,showLabel:true,labelSize:Desmos.LabelSizes.SMALL});
+
+  g2=Desmos.GraphingCalculator(document.getElementById('g2'),OPTS);
+  g2.setMathBounds({left:0,right:500,bottom:-0.05,top:1.15});
+  g2.setExpression({id:'dd',latex:`D_{max}=${dD}`,sliderBounds:{min:50,max:500,step:10}});
+  g2.setExpression({id:'f',latex:`y=\\max(0,1-x/D_{max})`,color:'#059669',lineWidth:3});
+  g2.setExpression({id:'ref',latex:'y=0.5',color:'#a1a1aa',lineStyle:Desmos.Styles.DASHED,lineWidth:1});
+}
+
+async function buildConsts(){
+  const cg=document.getElementById('cg');cg.innerHTML='';
+  try{
+    const ts=Date.now();
+    const [cur,com]=await Promise.all([
+      (await fetch(`${API}/load?file=${JFILE}&env=${ENV}&t=${ts}`)).json(),
+      (await fetch(`${API}/committed?file=${JFILE}&env=${ENV}&t=${ts}`)).json()
+    ]);
+    const cd=cur.data||{},gd=com.data||{};
+    CONSTS.forEach(d=>{
+      const v=cd[d.j],gv=gd[d.j];
+      const fmt=x=>x!==undefined?(typeof x==='number'?parseFloat(x.toPrecision(6)):x):'—';
+      const ch=v!==undefined&&gv!==undefined&&Math.abs(v-gv)>0.000001;
+      const e=document.createElement('div');e.className='ci';
+      if(ch)e.style.borderColor='rgba(251,191,36,0.4)';
+      e.innerHTML=`<div class="k">${d.k}</div>`+(ch?`<div class="v" style="color:var(--yl)">${fmt(v)} <span style="font-size:13px;color:var(--tx3);font-weight:400">← ${fmt(gv)}</span></div>`:`<div class="v">${fmt(v)}</div>`)+`<div class="f">${d.j}</div>`;
+      cg.appendChild(e);
+    });
+  }catch(e){cg.innerHTML='<div style="padding:20px;color:var(--rd)">로딩 실패</div>';}
+}
+
+// Graph-specific field mappings: [graph_index] → [{desmosVar, jsonKey}, ...]
+const GRAPH_FIELDS = [
+  // G1: ShootBlock Time
+  [{dv:'T_{def}',jk:'gK_ShootBlock_Time_Default'},{dv:'T_{wt}',jk:'gK_ShootBlock_Time_Weight'}],
+  // G2: ShootBlock Distance
+  [{dv:'D_{max}',jk:'gK_ShootBlock_Distance_Default'}],
+];
+function getGraph(i){return i===0?g1:g2;}
+
+async function saveG(idx){
+  const g=getGraph(idx), fields=GRAPH_FIELDS[idx], patch={};
+  for(const f of fields){
+    const v=await readVal(g,f.dv);
+    if(Math.abs(v-(gkData[f.jk]||0))>0.0001) patch[f.jk]=v;
+  }
+  if(!Object.keys(patch).length){toast('변경된 값이 없습니다');return;}
+  try{
+    const r=await(await fetch(`${API}/save`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:JFILE,env:ENV,patch})})).json();
+    if(r.ok){Object.assign(gkData,patch);await buildConsts();toast(`✅ 적용 완료`);}
+    else toast(`❌ ${r.error}`,1);
+  }catch(e){toast('❌ 서버 연결 실패',1);}
+}
+
+async function loadG(idx){
+  try{
+    const r=await(await fetch(`${API}/load?file=${JFILE}&env=${ENV}&t=${Date.now()}`)).json();
+    if(r.error){toast(`❌ ${r.error}`,1);return;}
+    const g=getGraph(idx), fields=GRAPH_FIELDS[idx];
+    for(const f of fields){
+      if(r.data[f.jk]!==undefined){
+        g.setExpression({id:f===fields[0]?'td':'dd',latex:`${f.dv}=${r.data[f.jk]}`});
+        gkData[f.jk]=r.data[f.jk];
+      }
+    }
+    await buildConsts();toast(`✅ 불러옴`);
+  }catch(e){toast('❌ 서버 연결 실패',1);}
+}
+
+async function clipAll(){
+  const patch={};
+  for(const fields of GRAPH_FIELDS){
+    const g=fields===GRAPH_FIELDS[0]?g1:g2;
+    for(const f of fields){
+      const v=await readVal(g,f.dv);
+      if(Math.abs(v-(gkData[f.jk]||0))>0.0001) patch[f.jk]=v;
+    }
+  }
+  if(!Object.keys(patch).length){toast('변경된 값이 없습니다');return;}
+  await navigator.clipboard.writeText(JSON.stringify(patch,null,2));toast('📋 복사됨');
+}
+
+async function saveToRepo(){
+  const patch={};
+  const td=await readVal(g1,'T_{def}'),tw=await readVal(g1,'T_{wt}'),dd=await readVal(g2,'D_{max}');
+  if(Math.abs(td-(gkData['gK_ShootBlock_Time_Default']||0.6))>0.0001)patch['gK_ShootBlock_Time_Default']=td;
+  if(Math.abs(tw-(gkData['gK_ShootBlock_Time_Weight']||0.8))>0.0001)patch['gK_ShootBlock_Time_Weight']=tw;
+  if(Math.abs(dd-(gkData['gK_ShootBlock_Distance_Default']||200))>0.0001)patch['gK_ShootBlock_Distance_Default']=dd;
+  if(!Object.keys(patch).length){toast('변경된 값이 없습니다');return;}
+  try{
+    const r=await(await fetch(`${API}/save`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:JFILE,env:ENV,patch})})).json();
+    if(r.ok){Object.assign(gkData,patch);await buildConsts();toast(`✅ ${Object.keys(r.changed).length}개 값 적용 완료`);}
+    else toast(`❌ ${r.error}`,1);
+  }catch(e){toast('❌ 서버 연결 실패',1);}
+}
+
+async function loadFromRepo(){
+  try{const r=await(await fetch(`${API}/load?file=${JFILE}&env=${ENV}&t=${Date.now()}`)).json();
+  if(r.error){toast(`❌ ${r.error}`,1);return;}
+  gkData=r.data;buildGraphs();buildCatch();await buildConsts();toast(`✅ ${ENV}/${JFILE}.json 불러옴`);
+  }catch(e){toast('❌ 서버 연결 실패',1);}
+}
+
+async function revertAll(){
+  if(!confirm(`${ENV}/${JFILE}.json 미커밋 변경을 되돌리시겠습니까?`))return;
+  try{const r=await(await fetch(`${API}/git`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revert',env:ENV,files:[`${ENV}/${JFILE}.json`]})})).json();
+  if(r.ok){await loadFromRepo();toast('✅ 되돌림 완료');}else toast(`❌ ${r.output||r.error}`,1);
+  }catch(e){toast(`❌ ${e.message}`,1);}
+}
+
+async function gitCommit(){
+  if(!confirm('Git에 커밋하시겠습니까?'))return;
+  try{const r=await(await fetch(`${API}/git`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'commit',env:ENV,message:`balance: GK tuning (${ENV})`})})).json();
+  if(r.ok){await buildConsts();toast('✅ Git commit 완료');}else toast(`❌ ${r.output||r.error}`,1);
+  }catch(e){toast(`❌ ${e.message}`,1);}
+}
+
+init().catch(e=>toast(`초기화 실패: ${e.message}`,1));
+</script>
+</body>
+</html>

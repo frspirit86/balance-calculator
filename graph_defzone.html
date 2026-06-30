@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<title>Defence Zone Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.07);--bdh:rgba(255,255,255,0.12);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.08);--gn:#34d399;--yl:#fbbf24;--rd:#f87171;--bl:#60a5fa;--r:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:600} header h1 span{color:var(--tx3);font-weight:400;margin-left:8px}
+  .badges{display:flex;gap:8px;align-items:center}
+  select.env-sel{background:var(--sf);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer}
+  nav{display:flex;gap:2px;padding:8px 32px;border-bottom:1px solid var(--bd);background:var(--sf)}
+  nav a{color:var(--tx3);text-decoration:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+  nav a:hover{color:var(--tx2);background:var(--sf2)} nav a.active{color:var(--tx);background:var(--sf2)}
+  .container{max-width:1440px;margin:0 auto;padding:24px 32px}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+  .card-hd{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bd)}
+  .card-hd h2{font-size:14px;font-weight:600}
+  .tag{font-size:11px;color:var(--tx3);background:var(--bg);padding:3px 10px;border-radius:6px;font-weight:500}
+  .toggle{display:flex;align-items:center;gap:8px;margin-left:auto;cursor:pointer;font-size:12px;user-select:none}
+  .toggle input{display:none}
+  .tslider{width:36px;height:20px;background:var(--sf2);border-radius:10px;position:relative;transition:background .2s}
+  .tslider::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--tx3);border-radius:50%;transition:all .2s}
+  .toggle input:checked+.tslider{background:var(--ac)}
+  .toggle input:checked+.tslider::after{left:18px;background:#fff}
+  .tlabel{color:var(--tx2);font-weight:500}
+  .main-layout{display:grid;grid-template-columns:auto 260px;gap:16px;align-items:start}
+  @media(max-width:1400px){.main-layout{grid-template-columns:auto 260px}}
+  #fieldCanvas{display:block;cursor:pointer;border-radius:8px;border:1px solid var(--bd)}
+  .canvas-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+  .canvas-card .card-hd{padding:12px 16px}
+  .canvas-wrap{padding:12px;background:var(--bg)}
+  .ctrl-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;width:300px}
+  .ctrl-section{padding:14px 16px;border-bottom:1px solid var(--bd)}
+  .ctrl-section:last-child{border-bottom:none}
+  .ctrl-label{font-size:11px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:block}
+  .char-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .char-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+  .char-sel{flex:1;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .char-sel:focus{outline:none;border-color:var(--ac)}
+  .stat-mini{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}
+  .stat-mini-item{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:11px}
+  .stat-mini-item .k{color:var(--tx3);margin-bottom:2px}
+  .stat-mini-item .v{font-weight:700;font-variant-numeric:tabular-nums}
+  .stat-mini-item input.stat-inp{width:100%;background:transparent;border:none;border-top:1px solid var(--bd);color:var(--tx);font-weight:700;font-variant-numeric:tabular-nums;font-family:inherit;font-size:13px;text-align:center;-moz-appearance:textfield;outline:none;padding:2px 0;margin-top:2px;cursor:text}
+  .stat-mini-item input.stat-inp:focus{color:var(--ac)}
+  .stat-mini-item input.stat-inp::-webkit-inner-spin-button,.stat-mini-item input.stat-inp::-webkit-outer-spin-button{opacity:1}
+  .mode-row{display:flex;gap:4px;flex-wrap:wrap}
+  .mode-btn{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx3);cursor:pointer;transition:all .15s;font-family:inherit}
+  .mode-btn:hover{border-color:var(--bdh);color:var(--tx2)}
+  .mode-btn.active{border-color:rgba(129,140,248,0.4);background:var(--acbg);color:var(--ac)}
+  .vs-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:8px}
+  .vs-inp-wrap{display:flex;flex-direction:column;gap:2px}
+  .vs-inp-wrap label{font-size:10px;color:var(--tx3);font-weight:600}
+  .vs-inp{width:100%;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;text-align:center;-moz-appearance:textfield}
+  .vs-inp::-webkit-inner-spin-button,.vs-inp::-webkit-outer-spin-button{opacity:1}
+  .vs-inp:focus{outline:none;border-color:var(--ac)}
+  /* Collapsible */
+  .coll-hd{padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bd)}
+  .coll-hd:hover{background:rgba(255,255,255,0.02)}
+  .coll-arr{font-size:11px;color:var(--tx3);margin-left:auto;transition:transform .2s}
+  .coll-arr.open{transform:rotate(180deg)}
+  .coll-body{display:none}
+  .coll-body.open{display:block}
+  /* SR params grid */
+  .sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;padding:16px}
+  .sr-item{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+  .sr-item .srk{font-size:10px;color:var(--tx3);font-family:Consolas,monospace}
+  .sr-item .srv{width:100%;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;text-align:center;-moz-appearance:textfield}
+  .sr-item .srv::-webkit-inner-spin-button,.sr-item .srv::-webkit-outer-spin-button{opacity:1}
+  .sr-item .srv:focus{outline:none;border-color:var(--ac)}
+  /* ZR table */
+  .zr-wrap{padding:12px 14px}
+  .zr-hint{font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5}
+  .zr-hint b{color:var(--ac)}
+  .zr-tbl{border-collapse:collapse;font-size:11px;width:100%}
+  .zr-tbl th{padding:5px 6px;text-align:center;border-bottom:1px solid var(--bd);color:var(--tx3);font-weight:600;white-space:nowrap}
+  .zr-tbl th.zone-col{text-align:left;color:var(--tx2)}
+  .zr-tbl th.active-col{color:var(--ac)}
+  .zr-tbl td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,0.03)}
+  .zr-tbl td.zone-name{font-size:11px;color:var(--tx2);padding:3px 6px;white-space:nowrap}
+  .zr-num{width:52px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:5px;padding:3px 5px;font-size:11px;font-weight:700;font-family:inherit;text-align:center;-moz-appearance:textfield;display:block}
+  .zr-num::-webkit-inner-spin-button,.zr-num::-webkit-outer-spin-button{opacity:1}
+  .zr-num:focus{outline:none;border-color:rgba(129,140,248,0.5)}
+  .zr-num.changed{border-color:rgba(251,191,36,0.6);color:var(--yl)}
+  .zr-num.active-stat{border-color:rgba(129,140,248,0.25)}
+  /* Zone detail panel */
+  #zoneDetail{display:none;padding:16px 20px;border-top:1px solid var(--bd);background:rgba(129,140,248,0.03)}
+  #zoneDetail h3{font-size:13px;font-weight:600;margin-bottom:12px}
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+  .detail-card{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}
+  .detail-card .dk{font-size:10px;color:var(--tx3);font-weight:600;margin-bottom:4px}
+  .detail-card .dv{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+  /* Zone table */
+  table{width:100%;border-collapse:collapse}
+  th{text-align:center;padding:10px 14px;font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);background:var(--sf)}
+  td{padding:10px 14px;text-align:center;font-size:13px;border-bottom:1px solid var(--bd);font-variant-numeric:tabular-nums}
+  tr:hover td{background:rgba(255,255,255,0.02)}
+  .nm{text-align:left;font-weight:600;color:var(--tx)}
+  .hi{color:var(--gn);font-weight:600} .md{color:var(--yl)} .lo{color:var(--rd)}
+  .toast{position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+  td.sel-col{background:rgba(129,140,248,0.08)!important;border-left:2px solid var(--ac);border-right:2px solid var(--ac)}
+  th.sel-col{border-left:2px solid var(--ac);border-right:2px solid var(--ac);color:var(--ac)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Defence Zone <span>Dashboard</span></h1>
+  <div class="badges">
+    <span style="font-size:12px;color:var(--tx3)">환경:</span>
+    <select class="env-sel" id="envSel"></select>
+    <span id="modeTag" class="tag" style="display:none"></span>
+    <span id="scenTag" class="tag" style="display:none"></span>
+  </div>
+</header>
+
+<nav>
+  <a href="graph_defence.html">Defence</a>
+  <a href="graph_target.html">타겟 선정</a>
+  <a href="graph_gk.html">GK</a>
+  <a href="graph_run.html">Run</a>
+  <a href="graph_pass.html">Pass</a>
+  <a class="active" href="graph_defzone.html">수비 Zone</a>
+</nav>
+
+<div class="container">
+  <div class="main-layout">
+    <!-- Canvas + detail + table -->
+    <div>
+      <div class="canvas-card">
+        <div class="card-hd">
+          <h2>수비 Zone 확률 맵</h2>
+          <span class="tag">GlobalConstDefence.json</span>
+          <span id="canvasInfoTag" class="tag" style="margin-left:auto">Zone 클릭 → 상세</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="fieldCanvas" width="840" height="544"></canvas>
+        </div>
+        <!-- Zone detail panel (shown on select) -->
+        <div id="zoneDetail">
+          <h3 id="zoneDetailTitle">Zone 상세 분석</h3>
+          <div class="detail-grid" id="zoneDetailGrid"></div>
+        </div>
+      </div>
+
+      <!-- Zone table -->
+      <div class="card">
+        <div class="card-hd"><h2>Zone별 유효값 비교</h2><span class="tag">선택된 수비수 기준</span></div>
+        <div style="overflow-x:auto">
+          <table id="zoneTable">
+            <thead id="zoneTableHead"></thead>
+            <tbody id="zoneTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <!-- Main ctrl card -->
+      <div class="ctrl-card">
+        <!-- Defender -->
+        <div class="ctrl-section">
+          <span class="ctrl-label">수비수</span>
+          <div class="char-row">
+            <div class="char-dot" style="background:var(--bl)"></div>
+            <select class="char-sel" id="defSel" onchange="onDefChange()"><option value="">선택...</option></select>
+          </div>
+          <div class="stat-mini" id="defStats"></div>
+        </div>
+
+        <!-- Attacker -->
+        <div class="ctrl-section">
+          <span class="ctrl-label">공격수</span>
+          <div class="char-row">
+            <div class="char-dot" style="background:var(--rd)"></div>
+            <select class="char-sel" id="atkSel" onchange="onAtkChange()"><option value="">선택...</option></select>
+          </div>
+          <div class="stat-mini" id="atkStats"></div>
+          <div class="vs-row" style="margin-top:8px">
+            <div class="vs-inp-wrap">
+              <label>VsDrib ✎</label>
+              <input type="number" class="vs-inp" id="vsDrib" min="0" max="200" step="1" value="75" oninput="update()">
+            </div>
+            <div class="vs-inp-wrap">
+              <label>VsPass ✎</label>
+              <input type="number" class="vs-inp" id="vsPass" min="0" max="200" step="1" value="75" oninput="update()">
+            </div>
+            <div class="vs-inp-wrap">
+              <label>VsShot ✎</label>
+              <input type="number" class="vs-inp" id="vsShot" min="0" max="200" step="1" value="75" oninput="update()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Ball type -->
+        <div class="ctrl-section">
+          <span class="ctrl-label">볼 타입</span>
+          <div class="mode-row" id="ballTypeBtns"></div>
+        </div>
+
+        <!-- Tackle type -->
+        <div class="ctrl-section">
+          <span class="ctrl-label">태클 타입</span>
+          <div class="mode-row" id="tackleTypeBtns"></div>
+        </div>
+
+        <!-- Time tier -->
+        <div class="ctrl-section">
+          <span class="ctrl-label">반응 시간</span>
+          <div class="mode-row" id="timeTierBtns"></div>
+        </div>
+
+        <!-- Loc type -->
+        <div class="ctrl-section">
+          <span class="ctrl-label">볼 위치</span>
+          <div class="mode-row" id="locTypeBtns"></div>
+        </div>
+      </div>
+
+      <!-- SR collapsible -->
+      <div class="card">
+        <div class="coll-hd" onclick="toggleColl('sr')">
+          <span style="font-size:13px;font-weight:600">⚙️ 수비 성공 확률 변수</span>
+          <span class="coll-arr" id="sr-arr">▼</span>
+        </div>
+        <div class="coll-body" id="sr-body">
+          <div style="display:grid;grid-template-columns:1fr;gap:0">
+            <div style="padding:10px 16px;border-bottom:1px solid var(--bd)">
+              <div style="font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">🏃 드리블</div>
+              <div id="sr-drib" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            </div>
+            <div style="padding:10px 16px;border-bottom:1px solid var(--bd)">
+              <div style="font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">⚽ 패스</div>
+              <div id="sr-pass" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            </div>
+            <div style="padding:10px 16px;border-bottom:1px solid var(--bd)">
+              <div style="font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">🥅 슈팅</div>
+              <div id="sr-shot" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            </div>
+            <div style="padding:10px 16px;border-bottom:1px solid var(--bd)">
+              <div style="font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">⏱ 시간 배율</div>
+              <div id="sr-time" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            </div>
+            <div style="padding:10px 16px;border-bottom:1px solid var(--bd)">
+              <div style="font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">📍 위치 배율</div>
+              <div id="sr-loc" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            </div>
+            <div style="padding:10px 16px">
+              <div style="font-size:10px;font-weight:700;color:var(--tx3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">🔄 ToDribble 확률</div>
+              <div id="sr-tdrib" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ZR panel: full width below -->
+  <div class="card" style="margin-top:0">
+    <div class="card-hd" style="padding:12px 14px">
+      <h2 style="font-size:13px">🗺️ 영역별 스탯 배율</h2>
+      <span class="tag" id="zrActiveHint" style="margin-left:auto"></span>
+    </div>
+    <div id="zrSliders"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== CONSTANTS =====================
+const API = '/api';
+const JFILE = 'GlobalConstDefence';
+let ENV = 'th';
+
+const STAT_FIELDS = ['defensiveAwareness','reflexes','marking','standingTackle','slidingTackle','blockPass','blockShot','composure','dribbling','groundPass','loftedPass','throughPass','cross'];
+const FIELD_SHORT = {defensiveAwareness:'da',reflexes:'rf',marking:'mk',standingTackle:'st',slidingTackle:'sl',blockPass:'bp',blockShot:'bs',composure:'cm',dribbling:'dr',groundPass:'gp',loftedPass:'lp',throughPass:'tp',cross:'crs'};
+
+// Zone definitions
+const ZONE_DEFS = [
+  {label:'자진영 PA',  short:'자진영\nPA',  fx:20,  fw:120, jkSuffix:'FirstThirdPenalty_Area'},
+  {label:'자진영',     short:'자진영',       fx:140, fw:140, jkSuffix:'FirstThird_Area'},
+  {label:'중원(수)',   short:'중원(수)',      fx:280, fw:140, jkSuffix:'MiddleThirdDefensive_Area'},
+  {label:'중원(공)',   short:'중원(공)',      fx:420, fw:140, jkSuffix:'MiddleThirdOffensive_Area'},
+  {label:'상대진영',   short:'상대진영',      fx:560, fw:140, jkSuffix:'FinalThird_Area'},
+  {label:'상대PA',    short:'상대PA',        fx:700, fw:120, jkSuffix:'FinalThirdPenalty_Area'},
+];
+
+// ZR prefix mapping
+const ZR_PREFIXES = {da:'dAwareness', mk:'marking', bp:'blockPass', bs:'blockShot', st:'standingTackle', sl:'slidingTackle'};
+const ZR_STAT_LABELS = {da:'DA', mk:'Marking', bp:'BlkPass', bs:'BlkShot', st:'StTkl', sl:'SlTkl'};
+
+// Default zone ratios
+const ZR = {
+  da: [1.0, 1.0, 0.8, 0.8, 0.8, 0.8],
+  mk: [1.0, 1.0, 0.9, 0.8, 0.1, 0.5],
+  bp: [1.5, 1.5, 1.3, 0.8, 0.1, 0.5],
+  bs: [2.0, 2.0, 1.5, 0.8, 0.1, 0.5],
+  st: [1.0, 1.0, 0.9, 0.8, 0.1, 0.5],
+  sl: [1.0, 1.0, 0.9, 0.8, 0.1, 0.5],
+};
+let ZR_DEF = JSON.parse(JSON.stringify(ZR));
+
+// SR formula params
+const SR_DEFS = [
+  {k:'srbDrib',    jk:'manualDef_Dribble_Default',                def:1.0,   cat:'drib', label:'Drib Default'},
+  {k:'srbDribW',   jk:'manualDef_Dribble_Stat_Weight',            def:0.0,   cat:'drib', label:'Drib Weight'},
+  {k:'srbDribSR',  jk:'manualDef_Dribble_StandingTackle_Ratio',   def:0.5,   cat:'drib', label:'Drib Stand α'},
+  {k:'srbDribSlR', jk:'manualDef_Dribble_SlidingTackle_Ratio',    def:0.5,   cat:'drib', label:'Drib Slide α'},
+  {k:'srbPass',    jk:'manualDef_Pass_Default',                    def:0.7,   cat:'pass', label:'Pass Default'},
+  {k:'srbPassW',   jk:'manualDef_Pass_Stat_Weight',                def:0.003, cat:'pass', label:'Pass Weight'},
+  {k:'srbPassSR',  jk:'manualDef_Pass_StandingTackle_Ratio',       def:0.5,   cat:'pass', label:'Pass Stand α'},
+  {k:'srbPassSlR', jk:'manualDef_Pass_SlidingTackle_Ratio',        def:0.5,   cat:'pass', label:'Pass Slide α'},
+  {k:'srbShot',    jk:'manualDef_Shot_Default',                    def:0.8,   cat:'shot', label:'Shot Default'},
+  {k:'srbShotW',   jk:'manualDef_Shot_Stat_Weight',                def:0.005, cat:'shot', label:'Shot Weight'},
+  {k:'srbShotSR',  jk:'manualDef_Shot_StandingTackle_Ratio',       def:0.5,   cat:'shot', label:'Shot Stand α'},
+  {k:'srbShotSlR', jk:'manualDef_Shot_SlidingTackle_Ratio',        def:0.5,   cat:'shot', label:'Shot Slide α'},
+  {k:'rtDrib0',    jk:'defence_Ratio_Drib_0to02',                  def:0.7,   cat:'time', label:'Drib 0~0.2s'},
+  {k:'rtDrib1',    jk:'defence_Ratio_Drib_02to04',                 def:0.8,   cat:'time', label:'Drib 0.2~0.4s'},
+  {k:'rtDrib2',    jk:'defence_Ratio_Drib_Later',                  def:1.0,   cat:'time', label:'Drib 0.4s+'},
+  {k:'rtPass0',    jk:'defence_Ratio_Pass_0to02',                  def:0.7,   cat:'time', label:'Pass 0~0.2s'},
+  {k:'rtPass1',    jk:'defence_Ratio_Pass_02to04',                 def:0.9,   cat:'time', label:'Pass 0.2~0.4s'},
+  {k:'rtPass2',    jk:'defence_Ratio_Pass_Later',                  def:1.0,   cat:'time', label:'Pass 0.4s+'},
+  {k:'rtShot0',    jk:'defence_Ratio_Shot_0to02',                  def:0.7,   cat:'time', label:'Shot 0~0.2s'},
+  {k:'rtShot1',    jk:'defence_Ratio_Shot_02to04',                 def:0.9,   cat:'time', label:'Shot 0.2~0.4s'},
+  {k:'rtShot2',    jk:'defence_Ratio_Shot_Later',                  def:1.0,   cat:'time', label:'Shot 0.4s+'},
+  {k:'locF',       jk:'autoDef_Ratio_Fball',                       def:1.2,   cat:'loc',   label:'정면 (Front)'},
+  {k:'locRL',      jk:'autoDef_Ratio_RLball',                      def:0.7,   cat:'loc',   label:'좌우 (Side)'},
+  {k:'locB',       jk:'autoDef_Ratio_Bball',                       def:0.3,   cat:'loc',   label:'후방 (Back)'},
+  // ToDribble params
+  {k:'tdTq',       jk:null,                                         def:0.0,   cat:'tdrib', label:'Quality Score (Tq)'},
+  {k:'tdDriD',     jk:'def_ToDribbleBall_Dri_Default',             def:0.2,   cat:'tdrib', label:'Drib Default (D)'},
+  {k:'tdDriWmk',   jk:'def_ToDribbleBall_Dri_Weight_Marking',      def:0.6,   cat:'tdrib', label:'Drib W_mk'},
+  {k:'tdDriWcm',   jk:'def_ToDribbleBall_Dri_Weight_Composure',    def:0.2,   cat:'tdrib', label:'Drib W_cm'},
+  {k:'tdDriWtq',   jk:'def_ToDribbleBall_Dri_Weight_QualityScore', def:0.2,   cat:'tdrib', label:'Drib W_tq'},
+  {k:'tdPassD',    jk:'def_ToDribbleBall_Pass_Default',            def:0.1,   cat:'tdrib', label:'Pass Default (D)'},
+  {k:'tdPassWint', jk:'def_ToDribbleBall_Pass_Weight_Intercept',   def:0.64,  cat:'tdrib', label:'Pass W_int'},
+  {k:'tdPassWcm',  jk:'def_ToDribbleBall_Pass_Weight_Composure',   def:0.4,   cat:'tdrib', label:'Pass W_cm'},
+  {k:'tdPassWtq',  jk:'def_ToDribbleBall_Pass_Weight_QualityScore',def:0.0,   cat:'tdrib', label:'Pass W_tq'},
+];
+const SR = {};
+SR_DEFS.forEach(d => SR[d.k] = d.def);
+
+// ===================== STATE =====================
+let ballType = 'drib';      // drib | pass | shot
+let tackleType = 'standing'; // standing | sliding
+let timeTier = 'later';     // early | mid | later
+let locType = 'none';       // none | front | side | back
+let selectedZone = -1;
+let characters = [];
+let defManual = {st:75, sl:75, mk:75, bp:75, bs:75, cm:75};
+let atkManual = {dr:75, gp:75, lp:75, tp:75, crs:75};
+let defChar = {...defManual};
+let atkChar = null;
+let vsValues = {drib:75, pass:75, shot:75};
+
+// ===================== HELPERS =====================
+function clamp(v) { return Math.min(1, Math.max(0, v)); }
+
+function getTimeRatio() {
+  const t = {early:0, mid:1, later:2}[timeTier];
+  if(ballType === 'drib') return [SR.rtDrib0, SR.rtDrib1, SR.rtDrib2][t];
+  if(ballType === 'pass') return [SR.rtPass0, SR.rtPass1, SR.rtPass2][t];
+  return [SR.rtShot0, SR.rtShot1, SR.rtShot2][t];
+}
+
+function getLocRatio() {
+  return {none: 1, front: SR.locF, side: SR.locRL, back: SR.locB}[locType] ?? 1;
+}
+
+function calcProb(char, zoneIdx) {
+  if(!char) return null;
+  const isSliding = tackleType === 'sliding';
+
+  // Apply zone ratios to base stats
+  const effSt = (char.st || 75) * ZR.st[zoneIdx];
+  const effSl = (char.sl || 75) * ZR.sl[zoneIdx];
+  const effMk = (char.mk || 75) * ZR.mk[zoneIdx];
+  const effBp = (char.bp || 75) * ZR.bp[zoneIdx];
+  const effBs = (char.bs || 75) * ZR.bs[zoneIdx];
+  const tackle = isSliding ? effSl : effSt;
+
+  let base;
+  if(ballType === 'drib') {
+    const alpha = isSliding ? SR.srbDribSlR : SR.srbDribSR;
+    base = clamp(SR.srbDrib + (alpha * tackle + (1 - alpha) * effMk - vsValues.drib) * SR.srbDribW);
+  } else if(ballType === 'pass') {
+    const alpha = isSliding ? SR.srbPassSlR : SR.srbPassSR;
+    base = clamp(SR.srbPass + (alpha * tackle + (1 - alpha) * effBp - vsValues.pass) * SR.srbPassW);
+  } else {
+    const alpha = isSliding ? SR.srbShotSlR : SR.srbShotSR;
+    base = clamp(SR.srbShot + (alpha * tackle + (1 - alpha) * effBs - vsValues.shot) * SR.srbShotW);
+  }
+
+  return base * getTimeRatio() * getLocRatio();
+}
+
+function getEffStats(char, zoneIdx) {
+  if(!char) return null;
+  return {
+    st: (char.st || 75) * ZR.st[zoneIdx],
+    sl: (char.sl || 75) * ZR.sl[zoneIdx],
+    mk: (char.mk || 75) * ZR.mk[zoneIdx],
+    bp: (char.bp || 75) * ZR.bp[zoneIdx],
+    bs: (char.bs || 75) * ZR.bs[zoneIdx],
+  };
+}
+
+function calcToDribble(char, zoneIdx) {
+  if(!char) return null;
+  if(ballType === 'shot') return null; // shot 타입은 ToDribble 없음
+  const cm = (char.cm !== undefined ? char.cm : 75); // composure, ZR 없음
+  const tq = SR.tdTq;
+  if(ballType === 'drib') {
+    const mk = (char.mk || 75) * ZR.mk[zoneIdx];
+    const vsDrib = vsValues.drib;
+    const val = SR.tdDriD
+      + SR.tdDriWmk * ((mk - 51) / 49 - (vsDrib - 51) / 49)
+      + SR.tdDriWcm * ((cm - 51) / 49)
+      + tq * SR.tdDriWtq;
+    return clamp(val);
+  } else {
+    // pass
+    const bp = (char.bp || 75) * ZR.bp[zoneIdx];
+    const vsPass = vsValues.pass;
+    const val = SR.tdPassD
+      + SR.tdPassWint * ((bp - 51) / 49 - (vsPass - 51) / 49)
+      + SR.tdPassWcm * ((cm - 51) / 49)
+      + tq * SR.tdPassWtq;
+    return clamp(val);
+  }
+}
+
+function probColor(p) {
+  if(p === null) return 'var(--tx3)';
+  if(p >= 0.8) return 'var(--gn)';
+  if(p >= 0.5) return 'var(--yl)';
+  return 'var(--rd)';
+}
+
+function probClass(p) {
+  if(p === null) return '';
+  if(p >= 0.8) return 'hi';
+  if(p >= 0.5) return 'md';
+  return 'lo';
+}
+
+function interpolateColor(p) {
+  // Returns RGBA color based on probability
+  if(p === null) return 'rgba(113,113,122,0.2)';
+  if(p >= 0.8) {
+    // green
+    return `rgba(52,211,153,${0.35 + (p - 0.8) * 0.75})`;
+  } else if(p >= 0.5) {
+    // yellow
+    return `rgba(251,191,36,${0.25 + (p - 0.5) * 0.5})`;
+  } else {
+    // red
+    return `rgba(248,113,113,${0.2 + (0.5 - p) * 0.6})`;
+  }
+}
+
+function getCharStats(char) {
+  if(!char) return {};
+  const out = {};
+  STAT_FIELDS.forEach(f => {
+    const s = FIELD_SHORT[f];
+    out[s] = char[f] ?? char[s] ?? 75;
+  });
+  return out;
+}
+
+// ===================== CANVAS =====================
+const canvas = document.getElementById('fieldCanvas');
+const ctx = canvas.getContext('2d');
+
+function drawField() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Field background
+  const FIELD = {x:20, y:20, w:800, h:504};
+
+  // Dark green base
+  ctx.fillStyle = '#0d1f0d';
+  ctx.fillRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+
+  // Alternating stripes (vertical, per zone)
+  ZONE_DEFS.forEach((z, i) => {
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.0)';
+    ctx.fillRect(z.fx, FIELD.y, z.fw, FIELD.h);
+  });
+
+  // Probability overlays
+  ZONE_DEFS.forEach((z, i) => {
+    const p = calcProb(defChar, i);
+    const isSelected = i === selectedZone;
+    const opacity = isSelected ? 0.55 : 0.4;
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = interpolateColor(p !== null ? p : null);
+    ctx.globalAlpha = 1;
+    // Draw with explicit alpha
+    const raw = interpolateColor(p);
+    ctx.fillStyle = raw;
+    ctx.fillRect(z.fx, FIELD.y, z.fw, FIELD.h);
+  });
+
+  // Field border
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+
+  // Center line
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(420, FIELD.y);
+  ctx.lineTo(420, FIELD.y + FIELD.h);
+  ctx.stroke();
+
+  // Center circle
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(420, FIELD.y + FIELD.h / 2, 60, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Penalty boxes (55% of field height, 120px wide)
+  const pbH = Math.round(FIELD.h * 0.55);
+  const pbY = FIELD.y + (FIELD.h - pbH) / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+  // Left PA
+  ctx.strokeRect(FIELD.x, pbY, 120, pbH);
+  // Right PA
+  ctx.strokeRect(FIELD.x + FIELD.w - 120, pbY, 120, pbH);
+
+  // Goal areas (30% height, 50px wide)
+  const gaH = Math.round(FIELD.h * 0.30);
+  const gaY = FIELD.y + (FIELD.h - gaH) / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  // Left
+  ctx.strokeRect(FIELD.x, gaY, 50, gaH);
+  // Right
+  ctx.strokeRect(FIELD.x + FIELD.w - 50, gaY, 50, gaH);
+
+  // Penalty spots
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  [85, 755].forEach(px => {
+    ctx.beginPath();
+    ctx.arc(px, FIELD.y + FIELD.h / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Zone dividers (dashed)
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  [140, 280, 420, 560, 700].forEach(x => {
+    ctx.beginPath();
+    ctx.moveTo(x, FIELD.y);
+    ctx.lineTo(x, FIELD.y + FIELD.h);
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // Selected zone border
+  if(selectedZone >= 0) {
+    const z = ZONE_DEFS[selectedZone];
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(z.fx, FIELD.y, z.fw, FIELD.h);
+  }
+
+  // Zone labels + probability values + hints
+  ZONE_DEFS.forEach((z, i) => {
+    const cx = z.fx + z.fw / 2;
+    const p = calcProb(defChar, i);
+    const eff = getEffStats(defChar, i);
+    const isSelected = i === selectedZone;
+
+    // Short label (top)
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const lines = z.short.split('\n');
+    lines.forEach((line, li) => {
+      ctx.fillText(line, cx, FIELD.y + 6 + li * 14);
+    });
+
+    // Probability value (center, large)
+    const midY = FIELD.y + FIELD.h / 2;
+    const td = calcToDribble(defChar, i);
+    const hasTd = td !== null;
+
+    if(p !== null) {
+      const pct = Math.round(p * 100);
+      const col = p >= 0.8 ? '#34d399' : p >= 0.5 ? '#fbbf24' : '#f87171';
+
+      // Shift probability up slightly when ToDribble is displayed
+      const probY = hasTd ? midY - 14 : midY;
+
+      ctx.fillStyle = col;
+      ctx.font = `bold ${isSelected ? 22 : 20}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${pct}%`, cx, probY);
+
+      // Stat hint below probability
+      if(eff) {
+        const tk = tackleType === 'sliding' ? 'Sl' : 'St';
+        const tkVal = tackleType === 'sliding' ? eff.sl : eff.st;
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${tk}:${Math.round(tkVal)} Mk:${Math.round(eff.mk)}`, cx, probY + 14);
+      }
+
+      // ToDribble probability (below, neutral white text)
+      if(hasTd) {
+        const tdPct = Math.round(td * 100);
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.font = `${isSelected ? 13 : 12}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`→드리블 ${tdPct}%`, cx, midY + 22);
+      }
+    } else {
+      // No defender selected
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.font = '12px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('—', cx, midY);
+    }
+
+    // Defender dot (selected zone)
+    if(isSelected && defChar) {
+      const dcy = FIELD.y + FIELD.h * 0.72;
+      ctx.beginPath();
+      ctx.arc(cx - 14, dcy, 10, 0, Math.PI * 2);
+      ctx.fillStyle = '#60a5fa';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // D label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('D', cx - 14, dcy);
+    }
+
+    // Attacker dot (selected zone)
+    if(isSelected && atkChar) {
+      const acy = FIELD.y + FIELD.h * 0.72;
+      ctx.beginPath();
+      ctx.arc(cx + 14, acy, 10, 0, Math.PI * 2);
+      ctx.fillStyle = '#f87171';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('A', cx + 14, acy);
+    }
+  });
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+// Canvas click → zone select/deselect
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  let hit = -1;
+  ZONE_DEFS.forEach((z, i) => { if(mx >= z.fx && mx < z.fx + z.fw) hit = i; });
+  selectedZone = (hit === selectedZone) ? -1 : hit;
+  update();
+});
+
+// ===================== ZONE DETAIL PANEL =====================
+function updateZoneDetail() {
+  const panel = document.getElementById('zoneDetail');
+  const grid = document.getElementById('zoneDetailGrid');
+  const title = document.getElementById('zoneDetailTitle');
+
+  if(selectedZone < 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  const z = ZONE_DEFS[selectedZone];
+  title.textContent = `${z.label} 상세 분석`;
+
+  const p = calcProb(defChar, selectedZone);
+  const eff = getEffStats(defChar, selectedZone);
+  const timeR = getTimeRatio();
+  const locR = getLocRatio();
+
+  const cards = [];
+
+  // Probability
+  if(p !== null) {
+    cards.push({k:'성공 확률', v:`${Math.round(p*100)}%`, cls: probClass(p)});
+  } else {
+    cards.push({k:'성공 확률', v:'—', cls:''});
+  }
+
+  // ToDribble
+  const td = calcToDribble(defChar, selectedZone);
+  if(td !== null) {
+    cards.push({k:'→드리블 확률', v:`${Math.round(td*100)}%`, cls:''});
+  } else if(ballType === 'shot') {
+    cards.push({k:'→드리블 확률', v:'N/A (shot)', cls:''});
+  }
+
+  if(defChar && eff) {
+    cards.push({k:'StTkl', v:`${defChar.st||75} → ${eff.st.toFixed(1)}`, cls:''});
+    cards.push({k:'SlTkl', v:`${defChar.sl||75} → ${eff.sl.toFixed(1)}`, cls:''});
+    cards.push({k:'Marking', v:`${defChar.mk||75} → ${eff.mk.toFixed(1)}`, cls:''});
+    cards.push({k:'BlkPass', v:`${defChar.bp||75} → ${eff.bp.toFixed(1)}`, cls:''});
+    cards.push({k:'BlkShot', v:`${defChar.bs||75} → ${eff.bs.toFixed(1)}`, cls:''});
+  }
+
+  cards.push({k:'시간 배율', v:`×${timeR.toFixed(2)}`, cls:''});
+  cards.push({k:'볼 위치 배율', v:`×${locR.toFixed(2)}`, cls:''});
+
+  grid.innerHTML = cards.map(c => `
+    <div class="detail-card">
+      <div class="dk">${c.k}</div>
+      <div class="dv ${c.cls}">${c.v}</div>
+    </div>`).join('');
+}
+
+// ===================== ZONE TABLE =====================
+function updateZoneTable() {
+  const thead = document.getElementById('zoneTableHead');
+  const tbody = document.getElementById('zoneTableBody');
+
+  // Header
+  const zoneCols = ZONE_DEFS.map((z, i) => {
+    const sel = i === selectedZone ? ' sel-col' : '';
+    return `<th class="${sel}">${z.label}</th>`;
+  }).join('');
+  thead.innerHTML = `<tr><th class="nm">항목</th>${zoneCols}<th>비고</th></tr>`;
+
+  const rows = [];
+
+  // Row: 성공 확률
+  const probCells = ZONE_DEFS.map((z, i) => {
+    const p = calcProb(defChar, i);
+    const sel = i === selectedZone ? ' sel-col' : '';
+    if(p === null) return `<td class="${sel}">—</td>`;
+    return `<td class="${probClass(p)}${sel}">${Math.round(p*100)}%</td>`;
+  }).join('');
+  rows.push(`<tr><td class="nm">성공 확률</td>${probCells}<td style="font-size:11px;color:var(--tx3)">${ballType}/${tackleType}</td></tr>`);
+
+  // Row: ToDribble 발생 확률
+  const tdCells = ZONE_DEFS.map((z, i) => {
+    const td = calcToDribble(defChar, i);
+    const sel = i === selectedZone ? ' sel-col' : '';
+    if(td === null) return `<td class="${sel}" style="color:var(--tx3)">—</td>`;
+    return `<td class="${sel}">${Math.round(td*100)}%</td>`;
+  }).join('');
+  const tdNote = ballType === 'shot' ? '(shot 미적용)' : (ballType === 'drib' ? 'mk 기반' : 'bp 기반');
+  rows.push(`<tr><td class="nm">→드리블 확률</td>${tdCells}<td style="font-size:11px;color:var(--tx3)">${tdNote}</td></tr>`);
+
+  // Stat rows (only if defender selected)
+  if(defChar) {
+    const statDefs = [
+      {key:'st', label:'StTkl 유효값'},
+      {key:'sl', label:'SlTkl 유효값'},
+      {key:'mk', label:'Marking 유효값'},
+      {key:'bp', label:'BlkPass 유효값'},
+      {key:'bs', label:'BlkShot 유효값'},
+    ];
+    statDefs.forEach(sd => {
+      const cells = ZONE_DEFS.map((z, i) => {
+        const eff = getEffStats(defChar, i);
+        const sel = i === selectedZone ? ' sel-col' : '';
+        if(!eff) return `<td class="${sel}">—</td>`;
+        return `<td class="${sel}">${eff[sd.key].toFixed(1)}</td>`;
+      }).join('');
+      rows.push(`<tr><td class="nm">${sd.label}</td>${cells}<td></td></tr>`);
+    });
+  }
+
+  tbody.innerHTML = rows.join('');
+}
+
+// ===================== BUTTON BUILDERS =====================
+function buildButtons() {
+  // Ball type
+  const ballBtns = [
+    {v:'drib', label:'Dribble'},
+    {v:'pass', label:'Pass'},
+    {v:'shot', label:'Shot'},
+  ];
+  const bb = document.getElementById('ballTypeBtns');
+  bb.innerHTML = ballBtns.map(b =>
+    `<button class="mode-btn${ballType===b.v?' active':''}" onclick="setBallType('${b.v}')">${b.label}</button>`
+  ).join('');
+
+  // Tackle type
+  const tBtns = [{v:'standing', label:'Standing'}, {v:'sliding', label:'Sliding'}];
+  const tb = document.getElementById('tackleTypeBtns');
+  tb.innerHTML = tBtns.map(b =>
+    `<button class="mode-btn${tackleType===b.v?' active':''}" onclick="setTackleType('${b.v}')">${b.label}</button>`
+  ).join('');
+
+  // Time tier
+  const timeBtns = [{v:'early', label:'0~0.2s'}, {v:'mid', label:'0.2~0.4s'}, {v:'later', label:'0.4s+'}];
+  const tmb = document.getElementById('timeTierBtns');
+  tmb.innerHTML = timeBtns.map(b =>
+    `<button class="mode-btn${timeTier===b.v?' active':''}" onclick="setTimeTier('${b.v}')">${b.label}</button>`
+  ).join('');
+
+  // Loc type
+  const locBtns = [{v:'none', label:'없음'}, {v:'front', label:'정면'}, {v:'side', label:'좌우'}, {v:'back', label:'후방'}];
+  const lb = document.getElementById('locTypeBtns');
+  lb.innerHTML = locBtns.map(b =>
+    `<button class="mode-btn${locType===b.v?' active':''}" onclick="setLocType('${b.v}')">${b.label}</button>`
+  ).join('');
+}
+
+function setBallType(v) { ballType = v; buildButtons(); update(); }
+function setTackleType(v) { tackleType = v; buildButtons(); update(); }
+function setTimeTier(v) { timeTier = v; buildButtons(); update(); }
+function setLocType(v) { locType = v; buildButtons(); update(); }
+
+// ===================== SR PARAMS PANEL =====================
+function buildSRPanel() {
+  const cats = ['drib', 'pass', 'shot', 'time', 'loc', 'tdrib'];
+  cats.forEach(cat => {
+    const defs = SR_DEFS.filter(d => d.cat === cat);
+    const container = document.getElementById(`sr-${cat}`);
+    if(!container) return;
+    container.innerHTML = defs.map(d => `
+      <div class="sr-item">
+        <div class="srk">${d.label}</div>
+        <input type="number" class="srv" id="sr_${d.k}" value="${SR[d.k]}"
+          step="${d.def < 0.01 ? 0.001 : d.def < 0.1 ? 0.01 : 0.05}"
+          oninput="onSRChange('${d.k}',this.value)">
+      </div>`).join('');
+  });
+}
+
+function onSRChange(key, val) {
+  const num = parseFloat(val);
+  if(isNaN(num)) return; // 소수점 입력 중이면 무시
+  SR[key] = num;
+  drawField();
+  updateZoneDetail();
+  updateZoneTable();
+}
+
+// ===================== ZR SLIDERS PANEL =====================
+function buildZRPanel() {
+  const container = document.getElementById('zrSliders');
+  const stats = ['da','mk','bp','bs','st','sl'];
+  const statLabels = {da:'DA', mk:'Marking', bp:'BlkPass', bs:'BlkShot', st:'StTkl', sl:'SlTkl'};
+
+  // 현재 볼 타입에서 수식에 실제로 영향을 주는 스탯
+  const activeStats = {
+    drib: ['st','sl','mk'],
+    pass: ['st','sl','bp'],
+    shot: ['st','sl','bs'],
+  }[ballType] || [];
+
+  const activeLabelMap = {
+    drib: 'Dribble: StTkl + Marking',
+    pass: 'Pass: StTkl + BlkPass',
+    shot: 'Shot: StTkl + BlkShot',
+  };
+
+  // 헤더 힌트 태그 업데이트
+  const hintEl = document.getElementById('zrActiveHint');
+  if(hintEl) hintEl.textContent = activeLabelMap[ballType];
+
+  const thCols = stats.map(s =>
+    `<th class="${activeStats.includes(s)?'active-col':''}">${statLabels[s]}</th>`
+  ).join('');
+  const rows = ZONE_DEFS.map((z, i) => {
+    const cells = stats.map(stat => {
+      const val = ZR[stat][i];
+      const isChanged = Math.abs(val - ZR_DEF[stat][i]) > 0.001;
+      const isActive = activeStats.includes(stat);
+      const cls = ['zr-num', isChanged?'changed':'', isActive?'active-stat':''].filter(Boolean).join(' ');
+      return `<td><input type="number" class="${cls}" id="zr_${stat}_${i}"
+        min="0" max="5" step="0.01" value="${val.toFixed(2)}"
+        oninput="onZRChange('${stat}',${i},this.value)"></td>`;
+    }).join('');
+    return `<tr><td class="zone-name">${z.label}</td>${cells}</tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="zr-wrap">
+      <table class="zr-tbl">
+        <thead><tr>
+          <th class="zone-col">영역</th>${thCols}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function updateZRActiveColumns() {
+  const stats = ['da','mk','bp','bs','st','sl'];
+  const activeStats = {drib:['st','sl','mk'], pass:['st','sl','bp'], shot:['st','sl','bs']}[ballType] || [];
+  const activeLabelMap = {drib:'Dribble: StTkl + Marking', pass:'Pass: StTkl + BlkPass', shot:'Shot: StTkl + BlkShot'};
+
+  // 헤더 컬럼 색상만 갱신
+  const ths = document.querySelectorAll('.zr-tbl thead th');
+  // ths[0] = 영역, ths[1..6] = stats
+  stats.forEach((s, i) => {
+    if(ths[i+1]) ths[i+1].className = activeStats.includes(s) ? 'active-col' : '';
+  });
+
+  // 헤더 힌트 태그 갱신
+  const hintEl = document.getElementById('zrActiveHint');
+  if(hintEl) hintEl.textContent = activeLabelMap[ballType];
+
+  // 입력 필드의 active-stat 클래스만 갱신 (값/포커스 건드리지 않음)
+  stats.forEach((stat, si) => {
+    ZONE_DEFS.forEach((_, i) => {
+      const inp = document.getElementById(`zr_${stat}_${i}`);
+      if(!inp) return;
+      const isChanged = inp.classList.contains('changed');
+      const isActive = activeStats.includes(stat);
+      inp.className = ['zr-num', isChanged?'changed':'', isActive?'active-stat':''].filter(Boolean).join(' ');
+    });
+  });
+}
+
+function onZRChange(stat, zoneIdx, val) {
+  const num = parseFloat(val);
+  if(isNaN(num)) return; // 입력 중 (예: "0.") 이면 무시, ZR 건드리지 않음
+  ZR[stat][zoneIdx] = num;
+  const inp = document.getElementById(`zr_${stat}_${zoneIdx}`);
+  if(inp) {
+    const activeStats = {drib:['st','sl','mk'], pass:['st','sl','bp'], shot:['st','sl','bs']}[ballType] || [];
+    const isChanged = Math.abs(num - ZR_DEF[stat][zoneIdx]) > 0.001;
+    const isActive = activeStats.includes(stat);
+    inp.className = ['zr-num', isChanged?'changed':'', isActive?'active-stat':''].filter(Boolean).join(' ');
+  }
+  // 패널 재빌드 없이 canvas + table만 갱신
+  drawField();
+  updateZoneDetail();
+  updateZoneTable();
+}
+
+// ===================== COLLAPSIBLE =====================
+function toggleColl(id) {
+  const body = document.getElementById(`${id}-body`);
+  const arr = document.getElementById(`${id}-arr`);
+  body.classList.toggle('open');
+  arr.classList.toggle('open');
+}
+
+// ===================== CHARACTER SELECTS =====================
+function populateChars() {
+  ['defSel', 'atkSel'].forEach(id => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">선택...</option>' +
+      characters.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    if(cur) sel.value = cur;
+  });
+}
+
+function getCharById(name) {
+  return characters.find(c => c.name === name) || null;
+}
+
+function charToStats(char) {
+  if(!char) return {};
+  const out = {};
+  STAT_FIELDS.forEach(f => {
+    const s = FIELD_SHORT[f];
+    out[s] = parseFloat(char[f] ?? char[s] ?? 75);
+  });
+  return out;
+}
+
+function onDefChange() {
+  const id = document.getElementById('defSel').value;
+  const raw = getCharById(id);
+  if(raw) {
+    defChar = charToStats(raw);
+  } else {
+    defChar = {...defManual};
+  }
+  renderDefStats();
+  update();
+}
+
+function onAtkChange() {
+  const id = document.getElementById('atkSel').value;
+  const raw = getCharById(id);
+  if(raw) {
+    atkChar = charToStats(raw);
+    document.getElementById('vsDrib').value = Math.round(atkChar.dr || 75);
+    document.getElementById('vsPass').value = Math.round(atkChar.gp || 75);
+    document.getElementById('vsShot').value = parseInt(document.getElementById('vsShot').value) || 75;
+    vsValues.drib = parseFloat(document.getElementById('vsDrib').value);
+    vsValues.pass = parseFloat(document.getElementById('vsPass').value);
+  } else {
+    atkChar = {...atkManual};
+    document.getElementById('vsDrib').value = Math.round(atkManual.dr);
+    document.getElementById('vsPass').value = Math.round(atkManual.gp);
+    vsValues.drib = atkManual.dr;
+    vsValues.pass = atkManual.gp;
+  }
+  renderAtkStats();
+  update();
+}
+
+function renderDefStats() {
+  const el = document.getElementById('defStats');
+  if(!document.getElementById('defSel').value) {
+    el.innerHTML = [
+      {k:'St.Tkl', v:'st'},{k:'Sl.Tkl', v:'sl'},{k:'Mk', v:'mk'},{k:'BlkP', v:'bp'},{k:'BlkS', v:'bs'},{k:'Comp', v:'cm'},
+    ].map(s => `<div class="stat-mini-item"><div class="k">${s.k}</div><input type="number" class="stat-inp" min="0" max="200" step="1" value="${defManual[s.v]}" oninput="onDefManualChange('${s.v}',this.value)"></div>`).join('');
+    return;
+  }
+  el.innerHTML = [
+    {k:'St.Tkl', v:defChar.st},{k:'Sl.Tkl', v:defChar.sl},
+    {k:'Mk', v:defChar.mk},{k:'BlkP', v:defChar.bp},{k:'BlkS', v:defChar.bs},{k:'Comp', v:defChar.cm},
+  ].map(s => `<div class="stat-mini-item"><div class="k">${s.k}</div><div class="v">${Math.round(s.v??75)}</div></div>`).join('');
+}
+
+function renderAtkStats() {
+  const el = document.getElementById('atkStats');
+  if(!document.getElementById('atkSel').value) {
+    el.innerHTML = [
+      {k:'Drib', v:'dr'},{k:'GrndP', v:'gp'},{k:'LftP', v:'lp'},{k:'ThruP', v:'tp'},{k:'Cross', v:'crs'},
+    ].map(s => `<div class="stat-mini-item"><div class="k">${s.k}</div><input type="number" class="stat-inp" min="0" max="200" step="1" value="${atkManual[s.v]}" oninput="onAtkManualChange('${s.v}',this.value)"></div>`).join('');
+    return;
+  }
+  el.innerHTML = [
+    {k:'Drib', v:atkChar.dr},{k:'GrndP', v:atkChar.gp},
+    {k:'LftP', v:atkChar.lp},{k:'ThruP', v:atkChar.tp},{k:'Cross', v:atkChar.crs},
+  ].map(s => `<div class="stat-mini-item"><div class="k">${s.k}</div><div class="v">${Math.round(s.v??75)}</div></div>`).join('');
+}
+
+function onDefManualChange(key, val) {
+  const num = parseFloat(val);
+  if(isNaN(num)) return;
+  defManual[key] = num;
+  defChar = {...defManual};
+  update();
+}
+
+function onAtkManualChange(key, val) {
+  const num = parseFloat(val);
+  if(isNaN(num)) return;
+  atkManual[key] = num;
+  atkChar = {...atkManual};
+  if(key === 'dr') { document.getElementById('vsDrib').value = Math.round(num); vsValues.drib = num; }
+  if(key === 'gp') { document.getElementById('vsPass').value = Math.round(num); vsValues.pass = num; }
+  update();
+}
+
+// ===================== HEADER TAGS =====================
+function updateHeaderTags() {
+  const modeTag = document.getElementById('modeTag');
+  const scenTag = document.getElementById('scenTag');
+  modeTag.style.display = 'inline';
+  modeTag.textContent = `${ballType} / ${tackleType}`;
+  const timeLabels = {early:'0~0.2s', mid:'0.2~0.4s', later:'0.4s+'};
+  const locLabels = {none:'없음', front:'정면', side:'좌우', back:'후방'};
+  scenTag.style.display = 'inline';
+  scenTag.textContent = `${timeLabels[timeTier]} · ${locLabels[locType]}`;
+}
+
+// ===================== UPDATE =====================
+function update() {
+  // Read vs values
+  vsValues.drib = parseFloat(document.getElementById('vsDrib').value) || 75;
+  vsValues.pass = parseFloat(document.getElementById('vsPass').value) || 75;
+  vsValues.shot = parseFloat(document.getElementById('vsShot').value) || 75;
+
+  drawField();
+  updateZoneDetail();
+  updateZoneTable();
+  updateHeaderTags();
+  updateZRActiveColumns(); // 입력 필드는 건드리지 않고 활성 컬럼 헤더만 갱신
+}
+
+// ===================== TOAST =====================
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'err' ? 'rgba(248,113,113,0.9)' : 'rgba(52,211,153,0.9)';
+  t.style.color = '#000';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===================== DATA LOADING =====================
+async function loadGlobalConstDefence() {
+  try {
+    const res = await fetch(`${API}/load?file=${JFILE}&env=${ENV}&t=${Date.now()}`);
+    if(!res.ok) throw new Error('load failed');
+    const raw = await res.json();
+    const d = raw.data || raw; // API가 {data:{...}} 또는 {...} 형태 모두 대응
+
+    // Load ZR values
+    Object.keys(ZR_PREFIXES).forEach(stat => {
+      const prefix = ZR_PREFIXES[stat];
+      ZONE_DEFS.forEach((z, i) => {
+        const key = `${prefix}_Ratio_${z.jkSuffix}`;
+        if(d[key] !== undefined) {
+          ZR[stat][i] = parseFloat(d[key]);
+        }
+      });
+    });
+    ZR_DEF = JSON.parse(JSON.stringify(ZR));
+
+    // Load SR values
+    SR_DEFS.forEach(p => {
+      if(d[p.jk] !== undefined) {
+        SR[p.k] = parseFloat(d[p.jk]);
+        const el = document.getElementById(`sr_${p.k}`);
+        if(el) el.value = SR[p.k];
+      }
+    });
+
+    buildZRPanel();
+    showToast('GlobalConstDefence 로드 완료');
+  } catch(e) {
+    console.warn('GlobalConstDefence load failed, using defaults:', e);
+  }
+}
+
+async function loadCharacters() {
+  try {
+    const res = await fetch(`${API}/characters?env=${ENV}&fields=${STAT_FIELDS.join(',')}`);
+    if(!res.ok) throw new Error('chars failed');
+    const data = await res.json();
+    characters = data.characters || data || [];
+    populateChars();
+  } catch(e) {
+    console.warn('Character load failed:', e);
+    characters = [];
+    populateChars();
+  }
+}
+
+async function reload() {
+  await Promise.all([loadCharacters(), loadGlobalConstDefence()]);
+  update();
+}
+
+// ===================== ENV SELECTOR =====================
+async function initEnvSel() {
+  try {
+    const cfg = await (await fetch(`${API}/config`)).json();
+    const sel = document.getElementById('envSel');
+    const envs = cfg.envs || cfg.environments || [ENV];
+    sel.innerHTML = envs.map(e => `<option value="${e}"${e===ENV?' selected':''}>${e}</option>`).join('');
+    if(cfg.defaultEnv) { ENV = cfg.defaultEnv; sel.value = ENV; }
+    sel.onchange = () => { ENV = sel.value; reload(); };
+  } catch(e) {
+    // If config fails, just use the default env
+    document.getElementById('envSel').innerHTML = `<option value="${ENV}">${ENV}</option>`;
+  }
+}
+
+// ===================== INIT =====================
+async function init() {
+  await initEnvSel();
+  buildButtons();
+  buildSRPanel();
+  buildZRPanel();
+  renderDefStats();
+  renderAtkStats();
+  update(); // draw with defaults first
+  await reload();
+}
+
+init();
+</script>
+</body>
+</html>

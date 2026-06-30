@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Football Balance Calculator</title>
+<meta name="description" content="축구 게임 밸런스 튜닝 계산기 — 공식을 그래프로 보며 수치를 조정하는 인터랙티브 대시보드">
+<script src="assets/static-api.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.07);--bdh:rgba(255,255,255,0.14);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.08);--gn:#34d399;--yl:#fbbf24;--rd:#f87171}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:1080px;margin:0 auto;padding:64px 32px 96px}
+  .hero{margin-bottom:48px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ac);margin-bottom:14px}
+  h1{font-size:40px;font-weight:800;letter-spacing:-0.02em;margin-bottom:16px}
+  h1 span{color:var(--tx3);font-weight:500}
+  .lead{font-size:16px;color:var(--tx2);max-width:680px;margin-bottom:24px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-size:12px;font-weight:500;color:var(--tx2);background:var(--sf);border:1px solid var(--bd);padding:6px 12px;border-radius:999px}
+  .chip b{color:var(--tx)}
+  .note{margin:28px 0 0;padding:14px 18px;border-radius:12px;font-size:13px;line-height:1.7;background:var(--acbg);border:1px solid rgba(129,140,248,0.18);color:var(--tx2)}
+  .note b{color:var(--ac)}
+  .sec-title{font-size:13px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:48px 0 16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  a.card{display:block;text-decoration:none;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:22px 22px 20px;transition:all .15s;position:relative;overflow:hidden}
+  a.card:hover{border-color:var(--bdh);transform:translateY(-2px);background:#1c1c20}
+  .card .ic{font-size:22px;margin-bottom:14px;display:block}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--tx)}
+  .card p{font-size:13px;color:var(--tx2);line-height:1.55}
+  .card .tag{margin-top:14px;display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3);background:var(--bg);border:1px solid var(--bd);padding:4px 9px;border-radius:6px}
+  footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--bd);font-size:12px;color:var(--tx3)}
+  @media(max-width:640px){.wrap{padding:40px 20px 80px}h1{font-size:30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Game Balance Tooling · Portfolio</div>
+    <h1>Football Balance Calculator <span>밸런스 계산기</span></h1>
+    <p class="lead">
+      축구 게임의 수비·패스·GK·스프린트 등 핵심 시스템 밸런스를
+      <b style="color:var(--tx)">공식 그래프와 시뮬레이션으로 직접 보며</b> 튜닝하는 인터랙티브 대시보드 모음입니다.
+      슬라이더로 상수를 조정하면 곡선과 확률이 실시간으로 반응하고,
+      <b style="color:var(--tx)">"현재 vs 기본값"</b> 비교로 무엇이 바뀌었는지 추적한 뒤 결과를 JSON으로 내보낼 수 있습니다.
+    </p>
+    <div class="meta">
+      <span class="chip">📊 <b>8</b> 대시보드</span>
+      <span class="chip">⚙️ <b>1,600+</b> 튜닝 상수</span>
+      <span class="chip">🧮 실시간 공식 시각화</span>
+      <span class="chip">⬇ JSON 내보내기</span>
+    </div>
+    <div class="note">
+      <b>ℹ 정적 데모 안내</b> — 이 사이트는 사내 밸런싱 툴을 정적 버전으로 재구성한 것입니다.
+      슬라이더로 자유롭게 조정·"적용"할 수 있으며, 변경값은 <b>이 브라우저(localStorage)</b>에만 저장됩니다.
+      좌하단 <b>JSON 내보내기</b> 버튼으로 튜닝 결과를 받아볼 수 있습니다.
+    </div>
+  </div>
+
+  <div class="sec-title">수비 (Defence)</div>
+  <div class="grid">
+    <a class="card" href="graph_defence.html">
+      <span class="ic">🛡️</span>
+      <h3>Defence Balancing</h3>
+      <p>자동·수동·강제 수비의 태클/인터셉트/블록 성공률을 스탯·구역·반응시간별로 튜닝.</p>
+      <span class="tag">GlobalConstDefence</span>
+    </a>
+    <a class="card" href="graph_defzone.html">
+      <span class="ic">🗺️</span>
+      <h3>Defence Zone Map</h3>
+      <p>필드 6개 구역 × 스탯 배율 × 시간/위치 보정을 히트맵으로 시각화.</p>
+      <span class="tag">Zone Heatmap</span>
+    </a>
+    <a class="card" href="graph_def_afterevent.html">
+      <span class="ic">🎲</span>
+      <h3>수비 이벤트 확률</h3>
+      <p>태클 이후 결과 분배(성공 / 아군 회수 / 상대 / 순수 물리)를 단계별로 계산.</p>
+      <span class="tag">Outcome Flow</span>
+    </a>
+    <a class="card" href="graph_target.html">
+      <span class="ic">🎯</span>
+      <h3>타겟 선정 시뮬레이터</h3>
+      <p>태클 시 어떤 타겟을 고를지 softmax 확률로 시뮬레이션. 필드에서 직접 배치.</p>
+      <span class="tag">Softmax Sim</span>
+    </a>
+  </div>
+
+  <div class="sec-title">필드 시스템 (Field Systems)</div>
+  <div class="grid">
+    <a class="card" href="graph_gk.html">
+      <span class="ic">🧤</span>
+      <h3>GK Balancing</h3>
+      <p>골키퍼 슛 블록 반응시간·거리 감쇠와 시나리오별 캐칭 확률.</p>
+      <span class="tag">GlobalConstGK</span>
+    </a>
+    <a class="card" href="graph_pass.html">
+      <span class="ic">⚽</span>
+      <h3>Pass Simulation</h3>
+      <p>패스 궤적·기준점·리시버 안전도와 각도/압박/원터치 정확도 모델.</p>
+      <span class="tag">GlobalConstPass</span>
+    </a>
+    <a class="card" href="graph_run.html">
+      <span class="ic">🏃</span>
+      <h3>Run Simulation</h3>
+      <p>2단계 가속 모델로 1v1 스프린트 동역학을 비교 시뮬레이션.</p>
+      <span class="tag">GlobalConstRun</span>
+    </a>
+    <a class="card" href="graph_target_init.html">
+      <span class="ic">🕒</span>
+      <h3>타겟 선정 (초기 버전)</h3>
+      <p>타겟 선정 로직의 초기 프로토타입 — 최종본과의 설계 진화를 비교.</p>
+      <span class="tag">v1 · 비교용</span>
+    </a>
+  </div>
+
+  <footer>
+    Built as a portfolio piece · 정적 사이트(Vercel 배포) · 데이터는 샘플 스냅샷 기준
+  </footer>
+
+</div>
+</body>
+</html>
