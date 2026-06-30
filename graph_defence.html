@@ -135,6 +135,26 @@
   .sub3nav{display:none;gap:2px;padding:3px 64px;border-bottom:1px solid var(--bd);background:var(--bg)}
   .sub3nav a{color:var(--tx3);text-decoration:none;padding:3px 12px;border-radius:5px;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;user-select:none}
   .sub3nav a:hover{color:var(--tx2);background:var(--sf2)} .sub3nav a.active{color:#fbbf24;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.2)}
+
+  /* 자체 SVG 차트 + 결과 패널 */
+  .rpanel{padding:12px 16px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:rgba(255,255,255,0.02)}
+  .rp-hint{font-size:12px;color:var(--tx3);padding:6px 0}
+  .rp-main{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .rp-l{display:flex;align-items:center;gap:14px}
+  .rp-who{display:flex;flex-direction:column;gap:2px}
+  .rp-name{font-size:14px;font-weight:700;color:var(--tx)}
+  .rp-stat{font-size:11px;color:var(--tx3)}
+  .rp-val{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .rp-r{display:flex;flex-direction:column;gap:4px;min-width:170px}
+  .rp-maxlbl{font-size:11px;color:var(--tx3)}
+  .rp-bar{height:6px;border-radius:3px;background:var(--sf2);overflow:hidden}
+  .rp-bar i{display:block;height:100%;border-radius:3px}
+  .rp-ratio{font-size:11px;color:var(--tx2);text-align:right;font-variant-numeric:tabular-nums}
+  .rp-params{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .rk{font-size:11px;color:var(--tx3);background:var(--bg);border:1px solid var(--bd);padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
+  .rk b{color:var(--tx2);font-weight:700;margin-left:2px}
+  .chart{padding:10px 12px 4px}
+  .gt-f{font-size:10px!important;opacity:0.75}
 </style>
 </head>
 <body>
@@ -213,7 +233,7 @@
       </div>
     </div>
   </div>
-  <div class="card"><div class="card-hd"><h2>Formula Graphs</h2><span class="tag">Interactive — Desmos Sliders</span></div>
+  <div class="card"><div class="card-hd"><h2>Formula Graphs</h2><span class="tag">선택 캐릭터 위치 · 최대 대비 수준</span></div>
     <div class="gscen" id="gScenRow">
       <span class="gs-label">시나리오</span>
       <span class="gs-label" id="gscen-summary" style="color:var(--tx2);font-size:12px;min-width:120px"></span>
@@ -230,6 +250,12 @@
         <option value="cross">크로스</option>
       </select>
       <button class="mu-tog" id="gs-tog" onclick="toggleMuActive()">서비스만</button>
+    </div>
+    <div id="logk-bar" style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid var(--bd);flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--ac)">정규화 체감 (로그) k</span>
+      <input type="range" id="logk" min="0" max="20" step="0.5" value="0" style="flex:1;min-width:160px;accent-color:var(--ac)" oninput="logkLabel(this.value)" onchange="onLogK(this.value)">
+      <span id="logk-val" style="font-size:12px;color:var(--tx2);min-width:160px">k = 0 (선형, 기존과 동일)</span>
+      <span style="font-size:11px;color:var(--tx3)">스탯이 높을수록 효과 체감 · 수비 성공 여부 공식에 적용</span>
     </div>
     <div class="graphs" id="ga"></div>
     <div id="write-bar" style="display:flex;gap:8px;padding:0 20px 12px;justify-content:flex-end;align-items:center">
@@ -524,6 +550,12 @@ const MATCHUP_CFG = {
 };
 
 // Graph definitions — 공식 유형별로 Desmos 수식과 JS 계산식을 개별 정의
+// ── 로그형 스탯 정규화 (v0.2) : k=0이면 기존 선형과 동일, k>0이면 고스탯 체감 ──
+var LOGK = 0;
+function NRM(v){ var x=(v-51)/49; if(x<0)x=0; else if(x>1)x=1; return LOGK<=0 ? x : Math.log(1+LOGK*x)/Math.log(1+LOGK); }
+function logkLabel(v){ var k=parseFloat(v)||0; var el=document.getElementById('logk-val'); if(el) el.textContent = k<=0 ? 'k = 0 (선형, 기존과 동일)' : ('k = '+k.toFixed(1)+' · 체감 적용'); }
+function onLogK(v){ LOGK=parseFloat(v)||0; logkLabel(v); if(typeof buildGraphs==='function') buildGraphs(); if(typeof updateAllMatchups==='function') updateAllMatchups(); }
+
 const GDEFS = [
   { label:'자동 패스 인터셉트 (구역별)', zones:[
       {label:'우리 팀 페널티 박스',     jk:'autoDef_Pass_Default_FirstThirdPenalty', def:0.3},
@@ -551,13 +583,13 @@ const GDEFS = [
     matchup:{xCalc:(d,a)=>d.bp, defSlider:'F_{ref}', defStat:'rf', atkSlider:'V_{p}', atkStat:'gp'},
     color:'#2563eb', statKey:'bp', sat:false, xLabel:'BlockPass (수비자)',
     formula:'D_zone + (R_r×(<em class="stat">Reflex</em>−51)/49 + R_da×(<em class="stat">DA</em>−51)/49 + (1−R_r−R_da)×(BP−51)/49 − (VsPass−51)/49) × W',
-    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(x-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,
-    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(${sv}-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,
-    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*(vals[4]-51)/49+vals[3]*(vals[5]-51)/49+(1-vals[2]-vals[3])*(sv-51)/49-(vals[6]-51)/49)*vals[1])),
+    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(x)-n(${v[6]}))\\cdot ${v[1]}))`,
+    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(${sv})-n(${v[6]}))\\cdot ${v[1]}))`,
+    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*NRM(vals[4])+vals[3]*NRM(vals[5])+(1-vals[2]-vals[3])*NRM(sv)-NRM(vals[6]))*vals[1])),
     desmosExtra:[
-      {latex:(v)=>`y=\\min(1,\\max(0,0.3+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(x-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,color:'#059669'},
-      {latex:(v)=>`y=\\min(1,\\max(0,0.1+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(x-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,color:'#d97706'},
-      {latex:(v)=>`y=\\min(1,\\max(0,0+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(x-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,color:'#dc2626'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0.3+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(x)-n(${v[6]}))\\cdot ${v[1]}))`,color:'#059669'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0.1+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(x)-n(${v[6]}))\\cdot ${v[1]}))`,color:'#d97706'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(x)-n(${v[6]}))\\cdot ${v[1]}))`,color:'#dc2626'},
     ],
     bounds:{left:40,right:100,bottom:-0.05,top:1.0}, refs:[{latex:'y=1',color:'#a1a1aa',style:'DASHED'}] },
 
@@ -573,9 +605,9 @@ const GDEFS = [
     matchup:{xCalc:(d,a)=>d.bs, defSlider:'F_{ref}', defStat:'rf'},
     color:'#dc2626', statKey:'bs', sat:true, xLabel:'BlockShot (수비자)',
     formula:'D + (R_r×(<em class="stat">Reflex</em>−51)/49 + R_da×(<em class="stat">DA</em>−51)/49 + (1−R_r−R_da)×(BS−51)/49 − (VsShoot−51)/49) × W',
-    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(x-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,
-    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[4]}-51)/49+${v[3]}\\cdot(${v[5]}-51)/49+(1-${v[2]}-${v[3]})\\cdot(${sv}-51)/49-(${v[6]}-51)/49)\\cdot ${v[1]}))`,
-    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*(vals[4]-51)/49+vals[3]*(vals[5]-51)/49+(1-vals[2]-vals[3])*(sv-51)/49-(vals[6]-51)/49)*vals[1])),
+    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(x)-n(${v[6]}))\\cdot ${v[1]}))`,
+    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[4]})+${v[3]}\\cdotn(${v[5]})+(1-${v[2]}-${v[3]})\\cdotn(${sv})-n(${v[6]}))\\cdot ${v[1]}))`,
+    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*NRM(vals[4])+vals[3]*NRM(vals[5])+(1-vals[2]-vals[3])*NRM(sv)-NRM(vals[6]))*vals[1])),
     bounds:{left:40,right:100,bottom:-0.05,top:1.15}, refs:[
       {latex:'y=1',  color:'#a1a1aa',style:'DASHED'},
       {latex:'y=0.6',color:'#dc2626',style:'DASHED'},
@@ -604,12 +636,12 @@ const GDEFS = [
     matchup:{xCalc:(d,a)=>d.st, defSlider:'M_{ref}', defStat:'mk', atkSlider:'D_{vs}', atkStat:'dr'},
     color:'#059669', statKey:'st', sat:true, xLabel:'StandingTackle (수비자)',
     formula:'D_zone + (((<em class="stat">StTkl</em>−51)/49 × R + (Mk−51)/49 × (1−R)) − (VsDrib−51)/49) × W',
-    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+((x-51)/49\\cdot ${v[2]}+(${v[3]}-51)/49\\cdot(1-${v[2]})-(${v[4]}-51)/49)\\cdot ${v[1]}))`,
-    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+((${sv}-51)/49\\cdot ${v[2]}+(${v[3]}-51)/49\\cdot(1-${v[2]})-(${v[4]}-51)/49)\\cdot ${v[1]}))`,
-    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+((sv-51)/49*vals[2]+(vals[3]-51)/49*(1-vals[2])-(vals[4]-51)/49)*vals[1])),
+    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(n(x)\\cdot ${v[2]}+n(${v[3]})\\cdot(1-${v[2]})-n(${v[4]}))\\cdot ${v[1]}))`,
+    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(n(${sv})\\cdot ${v[2]}+n(${v[3]})\\cdot(1-${v[2]})-n(${v[4]}))\\cdot ${v[1]}))`,
+    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(NRM(sv)*vals[2]+NRM(vals[3])*(1-vals[2])-NRM(vals[4]))*vals[1])),
     desmosExtra:[
-      {latex:(v)=>`y=\\min(1,\\max(0,0.3+((x-51)/49\\cdot ${v[2]}+(${v[3]}-51)/49\\cdot(1-${v[2]})-(${v[4]}-51)/49)\\cdot ${v[1]}))`,color:'#d97706'},
-      {latex:(v)=>`y=\\min(1,\\max(0,0.2+((x-51)/49\\cdot ${v[2]}+(${v[3]}-51)/49\\cdot(1-${v[2]})-(${v[4]}-51)/49)\\cdot ${v[1]}))`,color:'#dc2626'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0.3+(n(x)\\cdot ${v[2]}+n(${v[3]})\\cdot(1-${v[2]})-n(${v[4]}))\\cdot ${v[1]}))`,color:'#d97706'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0.2+(n(x)\\cdot ${v[2]}+n(${v[3]})\\cdot(1-${v[2]})-n(${v[4]}))\\cdot ${v[1]}))`,color:'#dc2626'},
     ],
     bounds:{left:40,right:100,bottom:-0.05,top:1.15}, refs:[
       {latex:'y=1',color:'#a1a1aa',style:'DASHED'},
@@ -641,12 +673,12 @@ const GDEFS = [
     matchup:{xCalc:(d,a)=>d.bp, defSlider:'S_{ref}', defStat:'st', atkSlider:'V_{p}', atkStat:'gp'},
     color:'#2563eb', statKey:'bp', sat:false, xLabel:'BlockPass (수비자)',
     formula:'D_zone + (R×(<em class="stat">StTkl</em>−51)/49 + (1−R)×(BP−51)/49 − (VsPass−51)/49) × W',
-    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[3]}-51)/49+(1-${v[2]})\\cdot(x-51)/49-(${v[4]}-51)/49)\\cdot ${v[1]}))`,
-    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[3]}-51)/49+(1-${v[2]})\\cdot(${sv}-51)/49-(${v[4]}-51)/49)\\cdot ${v[1]}))`,
-    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*(vals[3]-51)/49+(1-vals[2])*(sv-51)/49-(vals[4]-51)/49)*vals[1])),
+    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[3]})+(1-${v[2]})\\cdotn(x)-n(${v[4]}))\\cdot ${v[1]}))`,
+    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[3]})+(1-${v[2]})\\cdotn(${sv})-n(${v[4]}))\\cdot ${v[1]}))`,
+    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*NRM(vals[3])+(1-vals[2])*NRM(sv)-NRM(vals[4]))*vals[1])),
     desmosExtra:[
-      {latex:(v)=>`y=\\min(1,\\max(0,0.3+(${v[2]}\\cdot(${v[3]}-51)/49+(1-${v[2]})\\cdot(x-51)/49-(${v[4]}-51)/49)\\cdot ${v[1]}))`,color:'#d97706'},
-      {latex:(v)=>`y=\\min(1,\\max(0,0.2+(${v[2]}\\cdot(${v[3]}-51)/49+(1-${v[2]})\\cdot(x-51)/49-(${v[4]}-51)/49)\\cdot ${v[1]}))`,color:'#dc2626'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0.3+(${v[2]}\\cdotn(${v[3]})+(1-${v[2]})\\cdotn(x)-n(${v[4]}))\\cdot ${v[1]}))`,color:'#d97706'},
+      {latex:(v)=>`y=\\min(1,\\max(0,0.2+(${v[2]}\\cdotn(${v[3]})+(1-${v[2]})\\cdotn(x)-n(${v[4]}))\\cdot ${v[1]}))`,color:'#dc2626'},
     ],
     bounds:{left:40,right:100,bottom:-0.05,top:1.15}, refs:[
       {latex:'y=1',color:'#a1a1aa',style:'DASHED'},
@@ -664,9 +696,9 @@ const GDEFS = [
     matchup:{xCalc:(d,a)=>d.bs, defSlider:'S_{ref}', defStat:'st'},
     color:'#d97706', statKey:'bs', sat:true, xLabel:'BlockShot (수비자)',
     formula:'D + (R×(<em class="stat">StTkl</em>−51)/49 + (1−R)×(BS−51)/49 − (VsShoot−51)/49) × W',
-    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[3]}-51)/49+(1-${v[2]})\\cdot(x-51)/49-(${v[4]}-51)/49)\\cdot ${v[1]}))`,
-    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdot(${v[3]}-51)/49+(1-${v[2]})\\cdot(${sv}-51)/49-(${v[4]}-51)/49)\\cdot ${v[1]}))`,
-    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*(vals[3]-51)/49+(1-vals[2])*(sv-51)/49-(vals[4]-51)/49)*vals[1])),
+    desmos: (v)=> `y=\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[3]})+(1-${v[2]})\\cdotn(x)-n(${v[4]}))\\cdot ${v[1]}))`,
+    desmosY: (v,sv)=> `\\min(1,\\max(0,${v[0]}+(${v[2]}\\cdotn(${v[3]})+(1-${v[2]})\\cdotn(${sv})-n(${v[4]}))\\cdot ${v[1]}))`,
+    jsCalc: (vals,sv)=> Math.min(1,Math.max(0, vals[0]+(vals[2]*NRM(vals[3])+(1-vals[2])*NRM(sv)-NRM(vals[4]))*vals[1])),
     bounds:{left:40,right:100,bottom:-0.05,top:1.15}, refs:[
       {latex:'y=1',  color:'#a1a1aa',style:'DASHED'},
       {latex:'y=0.8',color:'#d97706',style:'DASHED'},
@@ -936,7 +968,7 @@ async function reload(){
     const repo=await(await fetch(`${API}/load?file=${JFILE}&env=${ENV}&t=${Date.now()}`)).json();
     if(!repo.error&&repo.data){
       GDEFS.forEach(d=>{
-        d.vars.forEach(v=>{if(v.jk&&repo.data[v.jk]!==undefined)v.cur=repo.data[v.jk];});
+        d.vars.forEach(v=>{if(v.jk&&repo.data[v.jk]!==undefined)v.cur=repo.data[v.jk];v.base=v.cur;});
         if(d.zones){
           d.zoneCached={};
           const typeArr=d.dribTypes||d.passTypes;
@@ -1093,180 +1125,94 @@ async function _bg(){
     const paramRowHTML=paramVarsWR.length?`<div class="gparams">${paramVarsWR.map(({v,vi})=>`<span class="gpi"><span class="gpi-lbl">${_pLabel(v.jk)}</span><input type="number" id="gpi-${idx}-${vi}" value="${v.cur}" min="${v.slider?.min??0}" max="${v.slider?.max??2}" step="${v.slider?.step??0.01}"></span>`).join('')}</div>`:'';
     const p=document.createElement('div');p.className='gp'+(sat?' sat':'');
     p.innerHTML=`
-      <div class="gt">${label} <code>${def.formula||''}</code>${sat?'<span class="st">⚠ SATURATED</span>':''}${dribTypeSelectHTML}${passTypeSelectHTML}${zoneSelectHTML}</div>
+      <div class="gt">${label} <code class="gt-f">${def.formula||''}</code>${sat?'<span class="st">⚠ SATURATED</span>':''}${dribTypeSelectHTML}${passTypeSelectHTML}${zoneSelectHTML}</div>
       ${paramRowHTML}
-      <div class="gi"><div class="ax"><b class="stat-ax">X</b> ${xLabel}&emsp;<b>Y</b> 출력값</div><div class="vm">${varMap}</div></div>
-      <div class="dw" id="dg${idx}"></div>
-      <div class="gl-area" id="lg${idx}"></div>
-      <div class="mu-row" id="mu${idx}"></div>
-      <div class="norm-row" id="nr${idx}"></div>
-      <div class="gc-area" id="gc${idx}"></div>
+      <div class="rpanel" id="rp${idx}"></div>
+      <div class="chart" id="cv${idx}"></div>
       <div class="sr"><button class="sb s" onclick="loadG(${idx})">📂 불러오기</button>${READ_ONLY?'':'<button class="sb p" onclick="saveG('+idx+')">💾 적용</button>'}</div>`;
     area.appendChild(p);
+    gObjs.push(null);
 
-    // Matchup result badge — global scenario drives value
-    const mCfg=def.matchup||MATCHUP_CFG[statKey];
-    if(mCfg){
-      const muEl=document.getElementById(`mu${idx}`);
-      muEl.innerHTML=`<span class="mu-res" id="mu-res-${idx}"></span>`;
-    }
-
-    const g=Desmos.GraphingCalculator(document.getElementById(`dg${idx}`),OPTS);
-    gObjs.push(g);
-    g.setMathBounds(bounds);
-
-    // Sliders (zones that have external number input get hidden in Desmos panel)
-    vars.forEach((v,vi)=>{
-      const hideInDesmos=def.zones&&vi===0; // D_zone controlled via external input
-      g.setExpression({id:`v${vi}`,latex:`${v.dv}=${v.cur}`,sliderBounds:v.slider||{min:0,max:1,step:0.01},hidden:hideInDesmos});
-    });
-
-    // Formula curve — from GDEFS.desmos function
-    g.setExpression({id:'f',latex:desmos(varNames),color,lineWidth:3});
-
-    // desmosExtra curves (zone / reference curves)
-    (def.desmosExtra||[]).forEach((ex,ei)=>{
-      g.setExpression({id:`fe${ei}`,latex:ex.latex(varNames),color:ex.color,lineWidth:2,lineStyle:Desmos.Styles.DASHED});
-    });
-
-    // Reference lines
-    (refs||[]).forEach((r,ri)=>{
-      g.setExpression({id:`ref${ri}`,latex:r.latex,color:r.color,lineStyle:Desmos.Styles[r.style||'DASHED'],lineWidth:1});
-    });
-
-    // Character points — from GDEFS.desmosY function
-    const ids={};
-    const svEntry=SV_MAP[statKey]||{sv:c=>c[statKey],raw:c=>c[statKey]};
-    const svFn=svEntry.sv;
-    const pts=CH.map((c,i)=>({n:c.n,sv:svFn(c),raw:svEntry.raw(c),idx:i,isActive:c.isActive})).filter(p=>showAllChars||p.isActive).sort((a,b)=>a.sv-b.sv);
-    // Filter out points whose x-value falls outside the graph bounds (e.g. stat=0 means data not set)
-    const visiblePts=pts.filter(p=>p.sv>=bounds.left&&p.sv<=bounds.right);
-    if(!def.skipPoints){
-      visiblePts.forEach((pt,si)=>{
-        const eid=`pt${pt.idx}`;
-        let ori=ORI[0];if(si>0&&Math.abs(visiblePts[si-1].sv-pt.sv)<=2)ori=ORI[si%ORI.length];
-        g.setExpression({id:eid,latex:`(${pt.sv},${desmosY(varNames,pt.sv)})`,label:pt.n,showLabel:true,labelSize:Desmos.LabelSizes.SMALL,labelOrientation:ori,color:charColors[pt.n],pointSize:8});
-        ids[pt.n]=ids[pt.n]||[];ids[pt.n].push(eid);
-      });
-    }
-    gData.push({g,ids});
-
-    // Legend — from GDEFS.jsCalc function
-    const legEl=document.getElementById(`lg${idx}`);
-    function renderLeg(){
-      const curVals=vars.map(v=>v.cur);
-      // Use visiblePts so that characters with unset stats (sv outside bounds) are excluded from legend
-      if(pts.length>0&&visiblePts.length===0){
-        legEl.innerHTML=`<span style="color:#f59e0b;font-size:11px">⚠ ${xLabel} 스탯 미설정 — 캐릭터 데이터에서 해당 스탯이 0입니다</span>`;
-        return;
-      }
-      const filtered=[...visiblePts].sort((a,b)=>b.sv-a.sv).filter(p=>active.has(p.n));
-      legEl.innerHTML=filtered.map(p=>{
-        const r=jsCalc(curVals,p.sv);
-        const disp=def.scoreMode?r.toFixed(2):(r*100).toFixed(1)+'%';
-        const cap=(!def.scoreMode&&r>=1)?' <span style="color:var(--yl);font-size:10px">cap</span>':'';
-        const rawDisp=typeof p.raw==='number'&&!Number.isInteger(p.raw)?p.raw.toFixed(2):p.raw;
-        return `<span class="gl" data-c="${p.n}"><span class="dt" style="background:${charColors[p.n]}"></span>${p.n} <span class="vl">${rawDisp}</span> → <span class="vl">${disp}</span>${cap}</span>`;
-      }).join('');
-    }
-    renderLeg();
-
-    // Live slider → legend + result badge + param input binding
-    vars.forEach((v,vi)=>{
-      const h=g.HelperExpression({latex:v.dv});
-      h.observe('numericValue',()=>{if(!isNaN(h.numericValue)){v.cur=h.numericValue;renderLeg();refreshMatchupResult(idx);const pi=document.getElementById(`gpi-${idx}-${vi}`);if(pi)pi.value=h.numericValue;}});
-    });
-    // Param input → Desmos slider + legend
+    // 파라미터 입력 → v.cur 갱신 + 카드 다시 그리기
     paramVarsWR.forEach(({v,vi})=>{
       const inp=document.getElementById(`gpi-${idx}-${vi}`);
-      if(inp){inp.oninput=()=>{const val=parseFloat(inp.value);if(!isNaN(val)){v.cur=val;g.setExpression({id:`v${vi}`,latex:`${v.dv}=${val}`});renderLeg();refreshMatchupResult(idx);}};}
+      if(inp){inp.oninput=()=>{const val=parseFloat(inp.value);if(!isNaN(val)){v.cur=val;drawCard(idx);}};}
     });
-    gLegs.push(renderLeg);
-
-    // Zone dropdown wiring (드리블 태클 구역 선택)
+    // 구역 드롭다운/값
     if(def.zones){
       const zoneSel=document.getElementById(`gzone-${idx}`);
       const zoneValInp=document.getElementById(`gzone-val-${idx}`);
-      if(zoneSel){
-        const gRef=g; // capture for closure
-        zoneSel.onchange=()=>{
-          const zi=parseInt(zoneSel.value);
-          def.activeZone=zi;
-          const z=def.zones[zi];
-          def.vars[0].jk=z.jk;
-          def.vars[0].cur=(def.zoneCached&&def.zoneCached[z.jk]!==undefined)?def.zoneCached[z.jk]:z.def;
-          gRef.setExpression({id:'v0',latex:`${def.vars[0].dv}=${def.vars[0].cur}`});
-          if(zoneValInp)zoneValInp.value=def.vars[0].cur.toFixed(2);
-          renderLeg();
-          refreshMatchupResult(idx);
-        };
-      }
-      if(zoneValInp){
-        const gRef=g;
-        zoneValInp.oninput=()=>{
-          const val=parseFloat(zoneValInp.value);if(isNaN(val))return;
-          def.vars[0].cur=val;
-          const z=def.zones[def.activeZone??2];
-          if(def.zoneCached)def.zoneCached[z.jk]=val;
-          gRef.setExpression({id:'v0',latex:`${def.vars[0].dv}=${val}`});
-          renderLeg();
-          refreshMatchupResult(idx);
-        };
-      }
+      if(zoneSel){zoneSel.onchange=()=>{const zi=parseInt(zoneSel.value);def.activeZone=zi;const z=def.zones[zi];def.vars[0].jk=z.jk;def.vars[0].cur=(def.zoneCached&&def.zoneCached[z.jk]!==undefined)?def.zoneCached[z.jk]:z.def;if(zoneValInp)zoneValInp.value=def.vars[0].cur.toFixed(2);drawCard(idx);};}
+      if(zoneValInp){zoneValInp.oninput=()=>{const val=parseFloat(zoneValInp.value);if(isNaN(val))return;def.vars[0].cur=val;const z=def.zones[def.activeZone??2];if(def.zoneCached)def.zoneCached[z.jk]=val;drawCard(idx);};}
     }
-    // Drib type dropdown wiring (드리블 종류: 일반/정지/먼 볼)
+    // 드리블 종류
     if(def.dribTypes){
       const dribSel=document.getElementById(`gdrib-${idx}`);
-      if(dribSel){
-        const gRef=g;
-        const zoneValInp2=document.getElementById(`gzone-val-${idx}`);
-        dribSel.onchange=()=>{
-          const di=parseInt(dribSel.value);
-          def.activeDribType=di;
-          const dt=def.dribTypes[di];
-          // Update jk for all zones using the new prefix
-          def.zones.forEach(z=>{
-            const suffix=z.jk.split('_Default_')[1];
-            z.jk=dt.prefix+suffix;
-          });
-          // Update active zone var
-          const z=def.zones[def.activeZone??2];
-          def.vars[0].jk=z.jk;
-          def.vars[0].cur=(def.zoneCached&&def.zoneCached[z.jk]!==undefined)?def.zoneCached[z.jk]:z.def;
-          gRef.setExpression({id:'v0',latex:`${def.vars[0].dv}=${def.vars[0].cur}`});
-          if(zoneValInp2)zoneValInp2.value=def.vars[0].cur.toFixed(2);
-          renderLeg();
-          refreshMatchupResult(idx);
-        };
-      }
+      const zvi2=document.getElementById(`gzone-val-${idx}`);
+      if(dribSel){dribSel.onchange=()=>{const di=parseInt(dribSel.value);def.activeDribType=di;const dt=def.dribTypes[di];def.zones.forEach(z=>{const suffix=z.jk.split('_Default_')[1];z.jk=dt.prefix+suffix;});const z=def.zones[def.activeZone??2];def.vars[0].jk=z.jk;def.vars[0].cur=(def.zoneCached&&def.zoneCached[z.jk]!==undefined)?def.zoneCached[z.jk]:z.def;if(zvi2)zvi2.value=def.vars[0].cur.toFixed(2);drawCard(idx);};}
     }
-    // Pass type dropdown wiring (패스 종류: 일반/이지/패스라인/로프티드)
+    // 패스 종류
     if(def.passTypes){
       const passSel=document.getElementById(`gpass-${idx}`);
-      if(passSel){
-        const gRef=g;
-        const zoneValInp3=document.getElementById(`gzone-val-${idx}`);
-        passSel.onchange=()=>{
-          const pi=parseInt(passSel.value);
-          def.activePassType=pi;
-          const pt=def.passTypes[pi];
-          // Update jk for all zones using the new prefix
-          def.zones.forEach(z=>{
-            const suffix=z.jk.split('_Default_')[1];
-            z.jk=pt.prefix+suffix;
-          });
-          // Update active zone var
-          const z=def.zones[def.activeZone??2];
-          def.vars[0].jk=z.jk;
-          def.vars[0].cur=(def.zoneCached&&def.zoneCached[z.jk]!==undefined)?def.zoneCached[z.jk]:z.def;
-          gRef.setExpression({id:'v0',latex:`${def.vars[0].dv}=${def.vars[0].cur}`});
-          if(zoneValInp3)zoneValInp3.value=def.vars[0].cur.toFixed(2);
-          renderLeg();
-          refreshMatchupResult(idx);
-        };
-      }
+      const zvi3=document.getElementById(`gzone-val-${idx}`);
+      if(passSel){passSel.onchange=()=>{const pi=parseInt(passSel.value);def.activePassType=pi;const pt=def.passTypes[pi];def.zones.forEach(z=>{const suffix=z.jk.split('_Default_')[1];z.jk=pt.prefix+suffix;});const z=def.zones[def.activeZone??2];def.vars[0].jk=z.jk;def.vars[0].cur=(def.zoneCached&&def.zoneCached[z.jk]!==undefined)?def.zoneCached[z.jk]:z.def;if(zvi3)zvi3.value=def.vars[0].cur.toFixed(2);drawCard(idx);};}
     }
+    gLegs.push(()=>drawCard(idx));
+    drawCard(idx);
   });
+}
+
+// ── 자체 SVG 차트 + 결과 패널 (Desmos 대체) ──────────────────────────
+function drawCard(idx){
+  const def=gDefs[idx]; if(!def) return;
+  const rp=document.getElementById('rp'+idx), cv=document.getElementById('cv'+idx);
+  if(!rp||!cv) return;
+  const vars=def.vars, bounds=def.bounds||{left:40,right:100,top:1,bottom:0};
+  const mCfg=def.matchup||MATCHUP_CFG[def.statKey];
+  const defChar=gScenDef?CH.find(c=>c.n===gScenDef):null;
+  const atkChar=gScenAtk?CH.find(c=>c.n===gScenAtk):null;
+  if(mCfg){
+    vars.forEach(v=>{ if(v.isTQ) v.cur=gScenTQ; });
+    if(mCfg.defSlider&&defChar){const vi=vars.findIndex(v=>v.dv===mCfg.defSlider);if(vi>=0)vars[vi].cur=defChar[mCfg.defStat]||75;}
+    if(mCfg.atkSlider&&atkChar){const vi=vars.findIndex(v=>v.dv===mCfg.atkSlider);if(vi>=0)vars[vi].cur=mCfg.atkStatFn?mCfg.atkStatFn(atkChar):(atkChar[mCfg.atkStat]||75);}
+  }
+  const curVals=vars.map(v=>v.cur);
+  const needAtk=mCfg&&(mCfg.atkStat||mCfg.atkSlider);
+  let selX=null, selR=null, selName=null;
+  if(mCfg&&defChar&&!(needAtk&&!atkChar)){ selX=mCfg.xCalc(defChar, atkChar||defChar); selR=def.jsCalc(curVals, selX); selName=defChar.n; }
+  const maxR=def.jsCalc(curVals, bounds.right);
+  const fmt=r=>def.scoreMode?r.toFixed(2):(r*100).toFixed(1)+'%';
+  const colOf=r=>r>=0.8?'var(--gn)':r>=0.5?'var(--yl)':'var(--rd)';
+  const statName=def.xLabel?def.xLabel.replace(/\s*\(.*\)\s*/,''):'스탯';
+  const chips=vars.filter(v=>v.jk).map(v=>`<span class="rk">${v.dv.replace(/[{}]/g,'')} <b>${(+(+v.cur).toFixed(4))}</b></span>`).join('');
+  if(selX==null){
+    rp.innerHTML=`<div class="rp-hint">상단 <b>수비자</b>${needAtk?' · <b>공격자</b>':''}를 선택하면 결과가 표시됩니다.</div><div class="rp-params">${chips}</div>`;
+  }else{
+    const ratio=maxR>0?Math.max(0,Math.min(1,selR/maxR)):0;
+    rp.innerHTML=`<div class="rp-main"><div class="rp-l"><div class="rp-who"><span class="rp-name">${selName}</span><span class="rp-stat">${statName} ${Math.round(selX)}</span></div><div class="rp-val" style="color:${colOf(selR)}">${fmt(selR)}</div></div><div class="rp-r"><div class="rp-maxlbl">최대 가능 ${fmt(maxR)}</div><div class="rp-bar"><i style="width:${(ratio*100).toFixed(0)}%;background:${colOf(selR)}"></i></div><div class="rp-ratio">${(ratio*100).toFixed(0)}% 수준</div></div></div><div class="rp-params">${chips}</div>`;
+  }
+  // SVG (Y축은 곡선 실제 범위로 자동 확대 → 작은 가중치에서도 로그 곡률이 보이도록)
+  const W=Math.max(320, cv.clientWidth||520), H=200, L=58, RM=16, T=16, Bm=28;
+  const xMin=bounds.left, xMax=bounds.right;
+  const NS=80, sy=[];
+  for(let i=0;i<=NS;i++){const x=xMin+(xMax-xMin)*i/NS; sy.push(def.jsCalc(curVals,x));}
+  let yLo=Math.min(...sy), yHi=Math.max(...sy);
+  if(selX!=null){yLo=Math.min(yLo,selR);yHi=Math.max(yHi,selR);}
+  let pad=(yHi-yLo)*0.18; if(pad<0.004)pad=0.004;
+  const yBot=yLo-pad, yTop=yHi+pad, zoomed=(yHi-yLo)<0.5;
+  const PX=x=>L+(x-xMin)/(xMax-xMin)*(W-L-RM);
+  const PY=y=>T+(yTop-y)/(yTop-yBot)*(H-T-Bm);
+  let path='';
+  for(let i=0;i<=NS;i++){const x=xMin+(xMax-xMin)*i/NS; path+=(i?'L':'M')+PX(x).toFixed(1)+' '+PY(sy[i]).toFixed(1)+' ';}
+  const yl=v=>def.scoreMode?(+v.toFixed(3)):(v*100).toFixed(1)+'%';
+  let grid='';
+  [yLo,(yLo+yHi)/2,yHi].forEach(v=>{const y=PY(v);grid+=`<line x1="${L}" y1="${y}" x2="${W-RM}" y2="${y}" stroke="var(--bd)" stroke-width="1"/><text x="${L-7}" y="${y+3}" text-anchor="end" font-size="10" fill="var(--tx3)">${yl(v)}</text>`;});
+  [xMin,(xMin+xMax)/2,xMax].forEach(xv=>{const x=PX(xv);grid+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--tx3)">${Math.round(xv)}</text>`;});
+  const ceil=`<line x1="${L}" y1="${PY(yHi)}" x2="${W-RM}" y2="${PY(yHi)}" stroke="var(--tx3)" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"/><text x="${W-RM}" y="${PY(yHi)-4}" text-anchor="end" font-size="9" fill="var(--tx3)">최대 ${yl(yHi)}</text>`;
+  const zlbl=zoomed?`<text x="${L}" y="${T-4}" font-size="9" fill="var(--tx3)">Y축 확대됨 (실제 변동폭 ${yl(yLo)}~${yl(yHi)})</text>`:'';
+  let mark='';
+  if(selX!=null){const mx=PX(selX),my=PY(selR);mark=`<line x1="${mx}" y1="${T}" x2="${mx}" y2="${H-Bm}" stroke="${def.color||'#818cf8'}" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/><circle cx="${mx}" cy="${my}" r="6" fill="${def.color||'#818cf8'}" stroke="var(--bg)" stroke-width="2"/><text x="${mx}" y="${my-11}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--tx)">${selName} ${fmt(selR)}</text>`;}
+  cv.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">${grid}${ceil}${zlbl}<path d="${path}" fill="none" stroke="${def.color||'#818cf8'}" stroke-width="2.5"/>${mark}</svg>`;
 }
 
 // ════════════════════════════════════════
@@ -1310,6 +1256,7 @@ function updateAllMatchups(){
 
 // 슬라이더 변경 시 결과 배지만 재계산 (Desmos 쓰기 없음 → 루프 없음)
 function refreshMatchupResult(idx){
+  drawCard(idx); return;
   const def=gDefs[idx]; if(!def)return;
   const mCfg=def.matchup||MATCHUP_CFG[def.statKey]; if(!mCfg)return;
   const defChar=gScenDef?CH.find(c=>c.n===gScenDef):null;
@@ -1332,6 +1279,7 @@ function refreshMatchupResult(idx){
 }
 
 function updateMatchup(idx){
+  drawCard(idx); return;
   const def=gDefs[idx];
   if(!def)return;
   const mCfg=def.matchup||MATCHUP_CFG[def.statKey];
@@ -1589,8 +1537,8 @@ async function saveAll(){
     const d=gDefs[i];
     for(const v of d.vars){
       if(!v.jk)continue;
-      const cur=await readVal(gObjs[i],v.dv);
-      if(Math.abs(cur-v.cur)>0.0001)patch[v.jk]=cur;
+      const cur=v.cur;
+      if(v.base!==undefined&&Math.abs(cur-v.base)>0.0001)patch[v.jk]=cur;
     }
   }
   if(!Object.keys(patch).length){toast('변경된 값이 없습니다');return;}
@@ -1610,7 +1558,7 @@ async function loadAll(){
     GDEFS.forEach(d=>d.vars.forEach(v=>{if(v.jk&&r.data[v.jk]!==undefined)v.cur=r.data[v.jk];}));
     gDefs.forEach((d,i)=>{
       d.vars.forEach((v,vi)=>{
-        if(v.jk&&r.data[v.jk]!==undefined){gObjs[i].setExpression({id:`v${vi}`,latex:`${v.dv}=${r.data[v.jk]}`});v.cur=r.data[v.jk];const pi=document.getElementById(`gpi-${i}-${vi}`);if(pi)pi.value=r.data[v.jk];}
+        if(v.jk&&r.data[v.jk]!==undefined){v.cur=r.data[v.jk];v.base=v.cur;const pi=document.getElementById(`gpi-${i}-${vi}`);if(pi)pi.value=r.data[v.jk];}
       });
     });
     gLegs.forEach(fn=>fn());await buildConsts();toast(`✅ ${ENV}/${JFILE}.json 불러옴`);
@@ -1619,7 +1567,7 @@ async function loadAll(){
 
 async function saveG(i){
   const d=gDefs[i],patch={};
-  for(const v of d.vars){if(!v.jk)continue;const cur=await readVal(gObjs[i],v.dv);patch[v.jk]=cur;}
+  for(const v of d.vars){if(!v.jk)continue;patch[v.jk]=v.cur;}
   try{
     const r=await(await fetch(`${API}/save`,{method:'POST',headers:{'Content-Type':'application/json','X-Write-Token':WRITE_TOKEN},body:JSON.stringify({file:JFILE,env:ENV,patch})})).json();
     if(r.ok){d.vars.forEach(v=>{if(v.jk&&r.changed[v.jk])v.cur=r.changed[v.jk].new;});await buildConsts();toast(`✅ ${d.label} 적용 완료`);}
@@ -1660,7 +1608,7 @@ async function loadG(i){
       if(zoneValInp)zoneValInp.value=d.vars[0].cur.toFixed(2);
     }
     d.vars.forEach((v,vi)=>{
-      if(v.jk&&r.data[v.jk]!==undefined){gObjs[i].setExpression({id:`v${vi}`,latex:`${v.dv}=${r.data[v.jk]}`});v.cur=r.data[v.jk];const pi=document.getElementById(`gpi-${i}-${vi}`);if(pi)pi.value=r.data[v.jk];}
+      if(v.jk&&r.data[v.jk]!==undefined){v.cur=r.data[v.jk];v.base=v.cur;const pi=document.getElementById(`gpi-${i}-${vi}`);if(pi)pi.value=r.data[v.jk];}
     });
     gLegs.forEach(fn=>fn());await buildConsts();toast(`✅ ${d.label} 불러옴`);
   }catch(e){toast('❌ 서버 연결 실패',1);}
@@ -1680,7 +1628,7 @@ async function revertAll(){
 
 async function clipAll(){
   const p={};
-  for(let i=0;i<gDefs.length;i++){for(const v of gDefs[i].vars){if(!v.jk)continue;const cur=await readVal(gObjs[i],v.dv);if(Math.abs(cur-v.cur)>0.0001)p[v.jk]=cur;}}
+  for(let i=0;i<gDefs.length;i++){for(const v of gDefs[i].vars){if(!v.jk)continue;if(v.base!==undefined&&Math.abs(v.cur-v.base)>0.0001)p[v.jk]=v.cur;}}
   if(!Object.keys(p).length){toast('변경된 값이 없습니다');return;}
   await navigator.clipboard.writeText(JSON.stringify(p,null,2));toast('📋 복사됨');
 }

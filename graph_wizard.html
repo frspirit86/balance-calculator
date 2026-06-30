@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수비 성공 확률 계산기 — 가이드</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.08);--bdh:rgba(255,255,255,0.16);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.12);--gn:#34d399;--yl:#fbbf24;--rd:#f87171}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;line-height:1.5}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:700} header h1 b{color:var(--ac)}
+  header a{color:var(--tx3);text-decoration:none;font-size:13px} header a:hover{color:var(--tx2)}
+  .wrap{max-width:780px;margin:0 auto;padding:28px 20px 80px}
+  .intro{font-size:13px;color:var(--tx2);margin-bottom:22px;line-height:1.7}
+  /* completed summary rows */
+  .row{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+  .row:hover{border-color:var(--bdh)}
+  .row .num{width:24px;height:24px;border-radius:50%;background:var(--acbg);color:var(--ac);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .row .k{font-size:12px;color:var(--tx3);font-weight:500;min-width:96px}
+  .row .v{font-size:14px;font-weight:700;color:var(--tx);flex:1}
+  .row .edit{font-size:11px;color:var(--tx3)}
+  /* active chooser */
+  .step{padding:20px 18px;background:var(--sf);border:1px solid var(--ac);border-radius:14px;margin-bottom:10px;box-shadow:0 0 0 3px var(--acbg)}
+  .step .st-hd{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .step .num{width:26px;height:26px;border-radius:50%;background:var(--ac);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .step h2{font-size:15px;font-weight:700}
+  .step .sub{font-size:12px;color:var(--tx3);margin-left:auto}
+  .step.editing{border-color:var(--yl);box-shadow:0 0 0 3px rgba(251,191,36,.12)}
+  .step.editing .num{background:var(--yl);color:#000}
+  .edit-cancel{margin-left:10px;padding:4px 11px;background:transparent;border:1px solid var(--bd);border-radius:7px;color:var(--tx3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  .edit-cancel:hover{border-color:var(--bdh);color:var(--tx2)}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .chip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;max-height:340px;overflow:auto}
+  .opt{padding:10px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--tx);transition:all .12s;text-align:left}
+  .opt:hover{border-color:var(--ac);background:var(--acbg)}
+  .opt.big{padding:14px 18px;font-size:15px}
+  .opt .ostat{display:block;font-size:10px;color:var(--tx3);font-weight:500;margin-top:3px;font-variant-numeric:tabular-nums}
+  .opt[disabled]{opacity:.35;cursor:not-allowed}
+  .opt[disabled]:hover{border-color:var(--bd);background:var(--bg)}
+  .opt .dis-note{display:block;font-size:10px;color:var(--rd);margin-top:3px}
+  /* 지도형 구역 선택 */
+  .zmap{border-radius:10px;overflow:hidden}
+  .zband{cursor:pointer}
+  .zband rect{fill:rgba(255,255,255,0.03);stroke:var(--bd);stroke-width:1;transition:fill .12s,stroke .12s}
+  .zband text{fill:var(--tx2);transition:fill .12s;pointer-events:none}
+  .zband:hover rect{fill:var(--acbg);stroke:var(--ac);stroke-width:1.5}
+  .zband:hover text{fill:var(--tx)}
+  .zmap-ends{display:flex;justify-content:space-between;font-size:10px;color:var(--tx3);margin-top:7px}
+  .zmap-hint{font-size:12px;color:var(--ac);margin-top:8px;text-align:center}
+  .search{width:100%;padding:9px 12px;margin-bottom:12px;background:var(--bg);border:1px solid var(--bd);border-radius:9px;color:var(--tx);font-size:13px;font-family:inherit;outline:none}
+  .search:focus{border-color:var(--ac)}
+  /* result */
+  .result{margin-top:22px;padding:0;background:var(--sf);border:1px solid var(--bd);border-radius:16px;overflow:hidden}
+  .res-hd{padding:20px 22px;border-bottom:1px solid var(--bd)}
+  .res-bc{font-size:12px;color:var(--tx3);margin-bottom:10px}
+  .res-bc b{color:var(--tx2)}
+  .res-main{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+  .res-pct{font-size:48px;font-weight:800;line-height:.95;font-variant-numeric:tabular-nums}
+  .res-tag{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;margin-bottom:6px}
+  .res-max{font-size:12px;color:var(--tx3);margin-bottom:8px}
+  .sec{padding:18px 22px;border-bottom:1px solid var(--bd)}
+  .sec:last-child{border-bottom:none}
+  .sec h3{font-size:12px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+  .breakdown{display:flex;flex-wrap:wrap;gap:7px}
+  .bk{font-size:11px;color:var(--tx3);background:var(--bg);border:1px solid var(--bd);padding:4px 9px;border-radius:6px;font-variant-numeric:tabular-nums}
+  .bk b{color:var(--tx2);margin-left:3px}
+  .adv{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--tx3)}
+  .adv input[type=range]{flex:1;min-width:150px;accent-color:var(--ac)}
+  .reset{margin-top:18px;text-align:center}
+  .reset button{padding:9px 18px;background:transparent;border:1px solid var(--bd);border-radius:9px;color:var(--tx2);font-size:13px;font-weight:600;cursor:pointer}
+  .reset button:hover{border-color:var(--bdh);color:var(--tx)}
+  .loading{padding:40px;text-align:center;color:var(--tx3);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>수비 성공 확률 <b>계산기</b></h1>
+  <a href="index.html">← 대시보드</a>
+</header>
+<div class="wrap">
+  <div class="intro">
+    아래 다섯 가지를 차례로 고르면, 내 캐릭터가 그 상황에서 <b style="color:var(--tx)">수비에 성공할 확률</b>을 계산해 지도와 그래프로 보여줍니다.
+  </div>
+  <div id="steps"><div class="loading">데이터 불러오는 중…</div></div>
+</div>
+
+<script>
+const API='/api';
+let GC={}, CHARS=[], LOGK=0;
+const sel={my:null,opp:null,ball:null,mode:null,zone:null};
+const ORDER=['my','opp','ball','mode','zone'];
+
+const ZONES=[
+  {key:'FirstThirdPenalty', l1:'우리', l2:'Penalty Area',                label:'우리 Penalty Area'},
+  {key:'FirstThird',        l1:'우리', l2:'First Third',                 label:'우리 First Third'},
+  {key:'MiddleThirdDef',    l1:'중앙', l2:'Middle Third', l3:'(수비 쪽)', label:'중앙 Middle Third (수비 쪽)'},
+  {key:'MiddleThirdOff',    l1:'중앙', l2:'Middle Third', l3:'(공격 쪽)', label:'중앙 Middle Third (공격 쪽)'},
+  {key:'FinalThird',        l1:'상대', l2:'Final Third',                 label:'상대 Final Third'},
+  {key:'FinalThirdPenalty', l1:'상대', l2:'Penalty Area',                label:'상대 Penalty Area'},
+];
+const BALLS=[
+  {key:'dribble', label:'드리블', icon:'🏃', modes:['manual']},
+  {key:'pass',    label:'패스',   icon:'⚽', modes:['auto','manual']},
+  {key:'shot',    label:'슈팅',   icon:'🥅', modes:['auto','manual']},
+];
+const MODES={auto:'자동 수비', manual:'수동 수비'};
+const STEP_META={
+  my:  {n:1,lbl:'내 캐릭터',  title:'내 캐릭터를 고르세요',  sub:'수비하는 선수'},
+  opp: {n:2,lbl:'상대 캐릭터', title:'상대 캐릭터를 고르세요', sub:'공격하는 선수'},
+  ball:{n:3,lbl:'막을 행동',   title:'무엇을 막나요?',         sub:'드리블 / 패스 / 슈팅'},
+  mode:{n:4,lbl:'수비 방식',   title:'어떻게 막나요?',         sub:'수동 / 자동'},
+  zone:{n:5,lbl:'수비 위치',   title:'어디서 막나요?',         sub:'필드 위치'},
+};
+
+function nrm(v,k){var x=(v-51)/49;if(x<0)x=0;else if(x>1)x=1;return k>0?Math.log(1+k*x)/Math.log(1+k):x;}
+function g(key,fb){return GC[key]!==undefined?GC[key]:fb;}
+
+// 주 스탯(그래프 x축)
+function primaryStat(){
+  if(sel.mode==='auto') return sel.ball==='shot'?'blockShot':'blockPass';
+  return 'standingTackle';
+}
+// 수비 성공 확률 계산 (primaryOverride: 그래프용 x축 스탯값)
+function calc(primaryOverride){
+  const k=LOGK, N=v=>nrm(v,k), my=sel.my, opp=sel.opp, ball=sel.ball, mode=sel.mode, zone=sel.zone;
+  const ps=primaryStat();
+  const stat=name=>(name===ps&&primaryOverride!=null)?primaryOverride:(my[name]||75);
+  let D,W,res;
+  if(mode==='auto'){
+    const Rr=g('autoDef_Reflex_Ratio',0.5), Rda=g('autoDef_DAwareness_Ratio',0);
+    let block,vs;
+    if(ball==='pass'){D=g('autoDef_Pass_Default_'+zone,0.3);W=g('autoDef_Pass_Stat_Weight',0.5);block=stat('blockPass');vs=opp.groundPass||75;}
+    else {D=g('autoDef_Shot_Default',0.35);W=g('autoDef_Shot_Stat_Weight',0.5);block=stat('blockShot');vs=opp.shootAccuracy||75;}
+    const term=Rr*N(stat('reflexes'))+Rda*N(stat('defensiveAwareness'))+(1-Rr-Rda)*N(block)-N(vs);
+    res=D+term*W;
+  } else {
+    let R,blockName,vs;
+    if(ball==='dribble'){D=g('manualDef_Dribble_Default_'+zone,1);W=g('manualDef_Dribble_Stat_Weight',0.5);R=g('manualDef_Dribble_StandingTackle_Ratio',0.5);blockName='marking';vs=opp.dribbling||75;}
+    else if(ball==='pass'){D=g('manualDef_Pass_Default_'+zone,1);W=g('manualDef_Pass_Stat_Weight',0.005);R=g('manualDef_Pass_StandingTackle_Ratio',0.5);blockName='blockPass';vs=opp.groundPass||75;}
+    else {D=g('manualDef_Shot_Default',0.8);W=g('manualDef_Shot_Stat_Weight',0.5);R=g('manualDef_Shot_StandingTackle_Ratio',0.5);blockName='blockShot';vs=opp.shootAccuracy||75;}
+    const term=(N(stat('standingTackle'))*R + N(stat(blockName))*(1-R)) - N(vs);
+    res=D+term*W;
+  }
+  return Math.max(0,Math.min(1,res));
+}
+
+const pct=r=>(r*100).toFixed(1)+'%';
+const colOf=r=>r>=0.7?'var(--gn)':r>=0.45?'var(--yl)':'var(--rd)';
+const tagOf=r=>r>=0.7?{t:'안전',bg:'rgba(52,211,153,.15)',c:'var(--gn)'}:r>=0.45?{t:'주의',bg:'rgba(251,191,36,.15)',c:'var(--yl)'}:{t:'위험',bg:'rgba(248,113,113,.15)',c:'var(--rd)'};
+
+// ───────── 렌더 ─────────
+let editing=null; // 현재 인라인 수정 중인 단계 key (없으면 null)
+function render(){
+  const root=document.getElementById('steps');
+  let html='';
+  for(let i=0;i<ORDER.length;i++){
+    const key=ORDER[i];
+    const priorChosen=ORDER.slice(0,i).every(k=>sel[k]!=null);
+    if(!priorChosen) break;                 // 아직 도달 못 한 단계
+    if(editing===key){ html+=chooser(key,true); }   // 인라인 수정: 이후 단계는 그대로 유지
+    else if(sel[key]!=null){ html+=summaryRow(key); }
+    else { html+=chooser(key,false); break; }        // 첫 미선택(프론티어) → 여기서 멈춤
+  }
+  root.innerHTML=html;
+  bindChooser();
+  if(ORDER.every(k=>sel[k]!=null)) renderResult();   // 수정 중에도 결과창 유지
+}
+
+function summaryRow(key){
+  const m=STEP_META[key];
+  let v='';
+  if(key==='my'||key==='opp') v=sel[key].name;
+  else if(key==='ball') v=BALLS.find(b=>b.key===sel.ball).icon+' '+BALLS.find(b=>b.key===sel.ball).label;
+  else if(key==='mode') v=MODES[sel.mode];
+  else if(key==='zone') v=ZONES.find(z=>z.key===sel.zone).label;
+  return `<div class="row" data-edit="${key}"><div class="num">${m.n}</div><div class="k">${m.lbl}</div><div class="v">${v}</div><div class="edit">수정 ✎</div></div>`;
+}
+
+function chooser(key,isEdit){
+  const m=STEP_META[key];
+  let body='';
+  if(key==='my'||key==='opp'){
+    const isDef=key==='my';
+    body=`<input class="search" id="csearch" placeholder="이름 검색…"><div class="chip-grid" id="cgrid">`+
+      CHARS.map(c=>{
+        const s=isDef?`마킹 ${c.marking||'-'} · 태클 ${c.standingTackle||'-'}`:`드리블 ${c.dribbling||'-'} · 패스 ${c.groundPass||'-'}`;
+        return `<button class="opt" data-pick="${c.name}"><span>${c.name}</span><span class="ostat">${s}</span></button>`;
+      }).join('')+`</div>`;
+  } else if(key==='ball'){
+    body=`<div class="opts">`+BALLS.map(b=>`<button class="opt big" data-pick="${b.key}">${b.icon} ${b.label}</button>`).join('')+`</div>`;
+  } else if(key==='mode'){
+    const avail=BALLS.find(b=>b.key===sel.ball).modes;
+    body=`<div class="opts">`+['auto','manual'].map(md=>{
+      const ok=avail.includes(md);
+      return `<button class="opt big" data-pick="${md}" ${ok?'':'disabled'}>${MODES[md]}${ok?'':'<span class="dis-note">드리블은 수동만 가능</span>'}</button>`;
+    }).join('')+`</div>`;
+  } else if(key==='zone'){
+    body=`<div class="zmap">${zoneMapSVG()}</div>
+      <div class="zmap-ends"><span>← 우리 골문 (수비)</span><span>상대 골문 (공격) →</span></div>
+      <div class="zmap-hint">막는 위치를 지도에서 클릭하세요</div>`;
+  }
+  const cancel=isEdit?`<button class="edit-cancel" data-cancel>취소</button>`:'';
+  return `<div class="step${isEdit?' editing':''}" data-step="${key}"><div class="st-hd"><div class="num">${m.n}</div><h2>${isEdit?m.lbl+' 수정':m.title}</h2><span class="sub">${m.sub}</span>${cancel}</div>${body}</div>`;
+}
+
+function bindChooser(){
+  // 요약 줄 클릭 → 그 단계만 인라인 수정 (이후 단계는 유지)
+  document.querySelectorAll('.row[data-edit]').forEach(r=>{
+    r.onclick=()=>{editing=r.dataset.edit;render();};
+  });
+  // 수정 취소
+  document.querySelectorAll('[data-cancel]').forEach(b=>{b.onclick=(e)=>{e.stopPropagation();editing=null;render();};});
+  // 선택지 클릭 (버튼 + 지도 구역 공통)
+  function doPick(el){
+    if(el.hasAttribute('disabled'))return;
+    const step=el.closest('.step'); if(!step)return;
+    const key=step.getAttribute('data-step');     // 초기 흐름·수정 모두 동일하게 처리
+    const val=el.getAttribute('data-pick');
+    if(key==='my'||key==='opp') sel[key]=CHARS.find(c=>c.name===val);
+    else sel[key]=val;
+    // 행동을 바꿔 현재 방식이 불가능해지면, 가능한 방식으로 자동 전환(나머지는 유지)
+    if(key==='ball'){
+      const nb=BALLS.find(x=>x.key===val);
+      if(sel.mode && !nb.modes.includes(sel.mode)) sel.mode=nb.modes[0];
+    }
+    editing=null;
+    render();
+  }
+  document.querySelectorAll('.step .opt[data-pick]').forEach(b=>{ if(!b.hasAttribute('disabled')) b.onclick=()=>doPick(b); });
+  document.querySelectorAll('.step .zmap .zband[data-pick]').forEach(b=>{ b.onclick=()=>doPick(b); });
+  const se=document.getElementById('csearch');
+  if(se){se.oninput=()=>{const q=se.value.toLowerCase();document.querySelectorAll('#cgrid .opt').forEach(o=>{o.style.display=o.dataset.pick.toLowerCase().includes(q)?'':'none';});};}
+}
+
+// ───────── 결과 ─────────
+function renderResult(){
+  const r=calc(), tag=tagOf(r), ps=primaryStat();
+  const myStatVal=sel.my[ps]||75;
+  const maxR=calc(100);
+  const ratio=maxR>0?Math.max(0,Math.min(1,r/maxR)):0;
+  const ballL=BALLS.find(b=>b.key===sel.ball).label, zoneL=ZONES.find(z=>z.key===sel.zone).label;
+  const statLabel={blockPass:'BlockPass',blockShot:'BlockShot',standingTackle:'StandingTackle'}[ps];
+
+  const el=document.createElement('div');
+  el.className='result';
+  el.innerHTML=`
+    <div class="res-hd">
+      <div class="res-bc"><b>${sel.my.name}</b>(수비) vs <b>${sel.opp.name}</b>(공격) · ${ballL} · ${MODES[sel.mode]} · ${zoneL}</div>
+      <div class="res-main">
+        <div class="res-pct" style="color:${colOf(r)}">${pct(r)}</div>
+        <div class="res-tag" style="background:${tag.bg};color:${tag.c}">${tag.t}</div>
+        <div class="res-max">최대 가능 ${pct(maxR)} · <b style="color:var(--tx2)">${(ratio*100).toFixed(0)}% 수준</b></div>
+      </div>
+    </div>
+    <div class="sec"><h3>필드 위치</h3><div id="fieldmap"></div></div>
+    <div class="sec"><h3>${statLabel} 에 따른 성공 확률</h3><div id="wgraph"></div></div>
+    <div class="sec"><h3>계산 내역</h3><div class="breakdown" id="bd"></div></div>
+    <div class="sec"><div class="adv"><span>정규화 체감 (로그) k</span><input type="range" min="0" max="20" step="0.5" value="${LOGK}" id="wk"><span id="wkv">k = ${LOGK} ${LOGK==0?'(선형)':''}</span></div></div>
+  `;
+  document.getElementById('steps').appendChild(el);
+
+  drawField(document.getElementById('fieldmap'), r);
+  drawGraph(document.getElementById('wgraph'), ps, myStatVal);
+  drawBreakdown(document.getElementById('bd'));
+  document.getElementById('wk').oninput=e=>{LOGK=parseFloat(e.target.value)||0;document.getElementById('wkv').textContent='k = '+LOGK+(LOGK==0?' (선형)':' (체감)');render();};
+
+  // 처음부터
+  const rs=document.createElement('div');rs.className='reset';
+  rs.innerHTML=`<button id="resetBtn">↺ 처음부터 다시</button>`;
+  document.getElementById('steps').appendChild(rs);
+  document.getElementById('resetBtn').onclick=()=>{ORDER.forEach(k=>sel[k]=null);LOGK=0;render();window.scrollTo({top:0,behavior:'smooth'});};
+}
+
+// 클릭 가능한 경기장 지도 (구역 선택용)
+function zoneMapSVG(){
+  const W=600,H=168,n=ZONES.length,bw=W/n,bh=H;
+  let bands='';
+  ZONES.forEach((z,i)=>{
+    const cx=i*bw+bw/2;
+    const lines=[{t:z.l1,s:10,c:'var(--tx3)',w:'400'},{t:z.l2,s:12,c:'var(--tx2)',w:'700'}].concat(z.l3?[{t:z.l3,s:9,c:'var(--tx3)',w:'400'}]:[]);
+    const y0=bh/2 - (lines.length-1)*8 + 4;
+    const txt=`<text text-anchor="middle" pointer-events="none">`+lines.map((ln,j)=>`<tspan x="${cx}" y="${y0+j*16}" font-size="${ln.s}" font-weight="${ln.w}" fill="${ln.c}">${ln.t}</tspan>`).join('')+`</text>`;
+    bands+=`<g class="zband" data-pick="${z.key}"><rect x="${i*bw}" y="0" width="${bw}" height="${bh}" rx="2"/>${txt}</g>`;
+  });
+  const deco=`<line x1="${W/2}" y1="0" x2="${W/2}" y2="${bh}" stroke="var(--bd)" stroke-width="1" stroke-dasharray="4 4" pointer-events="none"/>`+
+    `<circle cx="${W/2}" cy="${bh/2}" r="28" fill="none" stroke="var(--bd)" stroke-width="1" pointer-events="none"/>`+
+    `<rect x="0" y="${bh/2-34}" width="24" height="68" fill="none" stroke="var(--bd)" stroke-width="1" pointer-events="none"/>`+
+    `<rect x="${W-24}" y="${bh/2-34}" width="24" height="68" fill="none" stroke="var(--bd)" stroke-width="1" pointer-events="none"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${bands}${deco}</svg>`;
+}
+
+function drawField(host, r){
+  const W=600,H=200,n=ZONES.length,bw=W/n;
+  let bands='';
+  ZONES.forEach((z,i)=>{
+    const on=z.key===sel.zone, cx=i*bw+bw/2;
+    const fill=on?colOf(r):'rgba(255,255,255,0.03)';
+    bands+=`<rect x="${i*bw}" y="0" width="${bw}" height="${H}" fill="${fill}" opacity="${on?0.28:1}" stroke="var(--bd)" stroke-width="1"/>`;
+    bands+=`<text x="${cx}" y="${H-22}" text-anchor="middle" font-size="10" fill="${on?'var(--tx2)':'var(--tx3)'}" font-weight="${on?700:400}">${z.l1}</text>`;
+    bands+=`<text x="${cx}" y="${H-9}" text-anchor="middle" font-size="10" fill="${on?'var(--tx)':'var(--tx3)'}" font-weight="${on?700:400}">${z.l2}</text>`;
+    if(on){bands+=`<text x="${cx}" y="${H/2}" text-anchor="middle" font-size="22" font-weight="800" fill="${colOf(r)}">${pct(r)}</text>`;}
+  });
+  // 골/센터 라인 장식
+  const deco=`<line x1="${W/2}" y1="0" x2="${W/2}" y2="${H}" stroke="var(--bd)" stroke-width="1" stroke-dasharray="4 4"/>`+
+    `<circle cx="${W/2}" cy="${H/2}" r="30" fill="none" stroke="var(--bd)" stroke-width="1"/>`+
+    `<rect x="0" y="${H/2-40}" width="26" height="80" fill="none" stroke="var(--bd)" stroke-width="1"/>`+
+    `<rect x="${W-26}" y="${H/2-40}" width="26" height="80" fill="none" stroke="var(--bd)" stroke-width="1"/>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;border-radius:10px;overflow:hidden">${bands}${deco}</svg>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--tx3);margin-top:6px"><span>← 우리 골문</span><span>상대 골문 →</span></div>`;
+}
+
+function drawGraph(host, ps, myStatVal){
+  const W=Math.max(320,host.clientWidth||640),H=200,L=58,RM=16,T=16,Bm=28,xMin=40,xMax=100,NS=80;
+  const sy=[];for(let i=0;i<=NS;i++){sy.push(calc(xMin+(xMax-xMin)*i/NS));}
+  let yLo=Math.min(...sy),yHi=Math.max(...sy);
+  const selR=calc(myStatVal);yLo=Math.min(yLo,selR);yHi=Math.max(yHi,selR);
+  let pad=(yHi-yLo)*0.18;if(pad<0.004)pad=0.004;
+  const yBot=yLo-pad,yTop=yHi+pad,zoom=(yHi-yLo)<0.5;
+  const PX=x=>L+(x-xMin)/(xMax-xMin)*(W-L-RM), PY=y=>T+(yTop-y)/(yTop-yBot)*(H-T-Bm);
+  let path='';for(let i=0;i<=NS;i++){path+=(i?'L':'M')+PX(xMin+(xMax-xMin)*i/NS).toFixed(1)+' '+PY(sy[i]).toFixed(1)+' ';}
+  const yl=v=>(v*100).toFixed(1)+'%';
+  let grid='';
+  [yLo,(yLo+yHi)/2,yHi].forEach(v=>{const y=PY(v);grid+=`<line x1="${L}" y1="${y}" x2="${W-RM}" y2="${y}" stroke="var(--bd)"/><text x="${L-7}" y="${y+3}" text-anchor="end" font-size="10" fill="var(--tx3)">${yl(v)}</text>`;});
+  [40,70,100].forEach(xv=>{grid+=`<text x="${PX(xv)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--tx3)">${xv}</text>`;});
+  const ceil=`<line x1="${L}" y1="${PY(yHi)}" x2="${W-RM}" y2="${PY(yHi)}" stroke="var(--tx3)" stroke-dasharray="4 3" opacity="0.5"/><text x="${W-RM}" y="${PY(yHi)-4}" text-anchor="end" font-size="9" fill="var(--tx3)">최대 ${yl(yHi)}</text>`;
+  const zl=zoom?`<text x="${L}" y="${T-4}" font-size="9" fill="var(--tx3)">Y축 확대 (변동폭 ${yl(yLo)}~${yl(yHi)})</text>`:'';
+  const mx=PX(myStatVal),my=PY(selR);
+  const mark=`<line x1="${mx}" y1="${T}" x2="${mx}" y2="${H-Bm}" stroke="var(--ac)" stroke-dasharray="3 3" opacity="0.5"/><circle cx="${mx}" cy="${my}" r="6" fill="var(--ac)" stroke="var(--bg)" stroke-width="2"/><text x="${mx}" y="${my-11}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--tx)">${sel.my.name} ${pct(selR)}</text>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">${grid}${ceil}${zl}<path d="${path}" fill="none" stroke="var(--ac)" stroke-width="2.5"/>${mark}</svg>
+    <div style="font-size:10px;color:var(--tx3);text-align:center;margin-top:2px">X축: 내 캐릭터 ${({blockPass:'BlockPass',blockShot:'BlockShot',standingTackle:'StandingTackle'})[ps]} 스탯</div>`;
+}
+
+function drawBreakdown(host){
+  const my=sel.my,opp=sel.opp;
+  const items=[];
+  if(sel.mode==='auto'){
+    items.push(['Reflex',my.reflexes],['DefAware',my.defensiveAwareness],[sel.ball==='shot'?'BlockShot':'BlockPass',sel.ball==='shot'?my.blockShot:my.blockPass]);
+    items.push([sel.ball==='shot'?'상대 슛정확도':'상대 패스',sel.ball==='shot'?opp.shootAccuracy:opp.groundPass]);
+  } else {
+    items.push(['StandingTackle',my.standingTackle]);
+    items.push([sel.ball==='dribble'?'Marking':(sel.ball==='shot'?'BlockShot':'BlockPass'), sel.ball==='dribble'?my.marking:(sel.ball==='shot'?my.blockShot:my.blockPass)]);
+    const ol=sel.ball==='dribble'?'상대 드리블':(sel.ball==='shot'?'상대 슛정확도':'상대 패스');
+    const ov=sel.ball==='dribble'?opp.dribbling:(sel.ball==='shot'?opp.shootAccuracy:opp.groundPass);
+    items.push([ol,ov]);
+  }
+  host.innerHTML=items.map(([k,v])=>`<span class="bk">${k}<b>${v||'-'}</b></span>`).join('')+
+    `<span class="bk">정규화<b>${LOGK==0?'선형':'로그 k='+LOGK}</b></span>`;
+}
+
+async function init(){
+  try{
+    const cfg=await (await fetch(`${API}/config`)).json();
+    const env=cfg.default_env;
+    const c=await (await fetch(`${API}/characters?env=${env}&fields=reflexes,defensiveAwareness,marking,standingTackle,blockPass,blockShot,dribbling,groundPass,shootAccuracy`)).json();
+    CHARS=(c.characters||[]).filter(x=>x.name);
+    const gd=await (await fetch(`${API}/load?file=GlobalConstDefence&env=${env}`)).json();
+    GC=gd.data||{};
+    render();
+  }catch(e){
+    document.getElementById('steps').innerHTML=`<div class="loading" style="color:var(--rd)">데이터 로딩 실패: ${e.message}<br>서버(또는 정적 데이터)가 연결됐는지 확인하세요.</div>`;
+  }
+}
+init();
+</script>
+</body>
+</html>

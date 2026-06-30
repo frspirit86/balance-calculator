@@ -23,6 +23,15 @@
   .note{margin:28px 0 0;padding:14px 18px;border-radius:12px;font-size:13px;line-height:1.7;background:var(--acbg);border:1px solid rgba(129,140,248,0.18);color:var(--tx2)}
   .note b{color:var(--ac)}
   .sec-title{font-size:13px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:48px 0 16px}
+  a.feature{display:flex;align-items:center;justify-content:space-between;gap:20px;text-decoration:none;margin-top:32px;padding:24px 26px;border-radius:16px;background:linear-gradient(180deg,rgba(129,140,248,0.10),rgba(129,140,248,0.04));border:1px solid rgba(129,140,248,0.3);transition:all .15s}
+  a.feature:hover{border-color:rgba(129,140,248,0.55);transform:translateY(-2px)}
+  .feature-l{display:flex;align-items:center;gap:18px}
+  .feature-ic{font-size:34px}
+  a.feature h3{font-size:18px;font-weight:700;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:10px}
+  .feature-badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ac);background:var(--acbg);padding:3px 9px;border-radius:999px}
+  a.feature p{font-size:13px;color:var(--tx2);max-width:520px;line-height:1.55}
+  .feature-go{flex-shrink:0;font-size:14px;font-weight:700;color:var(--ac);white-space:nowrap}
+  @media(max-width:640px){a.feature{flex-direction:column;align-items:flex-start;gap:14px}}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
   a.card{display:block;text-decoration:none;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:22px 22px 20px;transition:all .15s;position:relative;overflow:hidden}
   a.card:hover{border-color:var(--bdh);transform:translateY(-2px);background:#1c1c20}
@@ -59,7 +68,18 @@
     </div>
   </div>
 
-  <div class="sec-title">수비 (Defence)</div>
+  <a class="feature" href="graph_wizard.html">
+    <div class="feature-l">
+      <span class="feature-ic">🧭</span>
+      <div>
+        <h3>수비 성공 확률 계산기 <span class="feature-badge">가이드</span></h3>
+        <p>내 캐릭터 → 상대 → 무엇을 → 어떻게 → 어디서, 다섯 가지를 차례로 고르면 수비 성공 확률을 지도와 그래프로. 처음 써도 쉽게.</p>
+      </div>
+    </div>
+    <span class="feature-go">시작하기 →</span>
+  </a>
+
+  <div class="sec-title">개별 튜닝 대시보드 · 수비 (Defence)</div>
   <div class="grid">
     <a class="card" href="graph_defence.html">
       <span class="ic">🛡️</span>
