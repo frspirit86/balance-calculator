@@ -13,8 +13,20 @@
   header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--bd)}
   header h1{font-size:16px;font-weight:700} header h1 b{color:var(--ac)}
   header a{color:var(--tx3);text-decoration:none;font-size:13px} header a:hover{color:var(--tx2)}
-  .wrap{max-width:780px;margin:0 auto;padding:28px 20px 80px}
+  .wrap{max-width:1150px;margin:0 auto;padding:28px 20px 80px;display:grid;grid-template-columns:minmax(0,1fr) 322px;gap:28px;align-items:start}
+  .main{min-width:0}
+  .side{position:sticky;top:20px}
   .intro{font-size:13px;color:var(--tx2);margin-bottom:22px;line-height:1.7}
+  /* 단계별 부연 설명 패널 */
+  .ex-block{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:15px 16px;margin-bottom:12px}
+  .ex-block.lead{border-color:rgba(129,140,248,0.28);background:var(--acbg)}
+  .ex-block h4{font-size:13px;font-weight:700;color:var(--tx);margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ex-src{font-size:9px;font-weight:600;color:var(--ac);background:var(--bg);border:1px solid var(--bd);padding:2px 7px;border-radius:5px}
+  .ex-block>p{font-size:12px;line-height:1.65;color:var(--tx2)}
+  .ex-item{margin-top:11px;padding-top:11px;border-top:1px solid var(--bd)}
+  .ex-item .it{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:4px}
+  .ex-item p{font-size:12px;line-height:1.6;color:var(--tx2)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}.side{position:static;order:-1}}
   /* completed summary rows */
   .row{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
   .row:hover{border-color:var(--bdh)}
@@ -87,10 +99,13 @@
   <a href="index.html">← 대시보드</a>
 </header>
 <div class="wrap">
-  <div class="intro">
-    아래 다섯 가지를 차례로 고르면, 내 캐릭터가 그 상황에서 <b style="color:var(--tx)">수비에 성공할 확률</b>을 계산해 지도와 그래프로 보여줍니다.
+  <div class="main">
+    <div class="intro">
+      아래 다섯 가지를 차례로 고르면, 내 캐릭터가 그 상황에서 <b style="color:var(--tx)">수비에 성공할 확률</b>을 계산해 지도와 그래프로 보여줍니다.
+    </div>
+    <div id="steps"><div class="loading">데이터 불러오는 중…</div></div>
   </div>
-  <div id="steps"><div class="loading">데이터 불러오는 중…</div></div>
+  <aside class="side"><div class="side-inner" id="side"></div></aside>
 </div>
 
 <script>
@@ -129,6 +144,39 @@ function defStatsFor(ball,mode){
   return ['standingTackle','blockPass']; // manual pass
 }
 function atkStatFor(ball){ return ball==='dribble'?'dribbling':ball==='shot'?'shootAccuracy':'groundPass'; }
+
+// ── 단계별 부연 설명 (mode/zone 정의는 기획 문서 기반) ─────────────
+const EXPLAIN={
+  intro:{title:'수비 성공 확률이란?', body:'수비수가 상대의 공격 행동(드리블·패스·슈팅)을 막아내는 데 성공할 확률입니다. 수비수와 공격수의 능력치를 비교하고, 막는 방식(자동/수동)과 필드 위치(구역)에 따라 보정해 0~100%로 계산합니다.'},
+  ball:{title:'무엇을 막나요?', items:[
+    {t:'드리블 수비', b:'공을 몰고 들어오는 상대를 태클로 막습니다. 수비수의 스탠딩 태클·마킹 vs 상대의 드리블 능력으로 판정합니다.'},
+    {t:'패스 수비', b:'상대의 패스를 가로채거나(인터셉트) 차단합니다. 패스 차단 능력 vs 상대의 패스 능력.'},
+    {t:'슈팅 수비', b:'상대의 슛을 블록합니다. 슛 블록 능력 vs 상대의 슛 정확도.'},
+  ]},
+  mode:{title:'어떻게 막나요?', src:true, items:[
+    {t:'자동 수비 (Def_Auto)', b:'키를 누르지 않아도 볼에 접근하면 자동으로 진입하는 수비입니다. 수비 범위(샘플링 시간·터치 거리)가 작고 소극적이지만, 헛발질이 전혀 없어 리스크가 없습니다. 실패하지 않으므로 발생 빈도는 수동보다 낮고 진입 조건이 까다롭습니다.'},
+    {t:'수동 수비 (Def_Manual)', b:'수비 키(S)를 눌러 진입하는 수비(수동 패스컷·태클·슛블록)입니다. 자동보다 수비 범위가 넓지만, 성공이든 실패든 무조건 발을 뻗기 때문에 리스크가 있습니다. 버튼을 누르면 터치 지점이 없어도 무조건 진입합니다.'},
+  ]},
+  my:{title:'내 캐릭터 — 주요 스탯', body:'선택한 행동·방식에 따라 수비 성공에 직접 영향을 주는 스탯이 달라집니다. 자동 수비는 반응속도·수비 인지·차단 능력이, 수동 수비는 스탠딩 태클과 마킹/차단 능력이 핵심입니다. 이 값이 높을수록 성공 확률이 오르며, 높아질수록 추가 효과는 점점 줄어듭니다(체감).'},
+  opp:{title:'상대 캐릭터 — 대항 능력', body:'상대의 해당 공격 능력치(드리블 / 패스 / 슛 정확도)는 내 수비 성공 확률을 깎습니다. 내 수비 스탯과 상대 공격 스탯의 차이로 최종 확률이 결정됩니다.'},
+  zone:{title:'어디서 막나요? — 위치 보정', src:true, body:'우리 팀 진영 깊숙한 곳에서 쉽게 볼을 뺏기면 게임 흐름에 악영향을 주므로, 우리 진영에 가까울수록 수비 성공 확률을 높게(상대 진영일수록 낮게) 보정합니다. 단, 이 보정이 너무 심하면 수비 라인이 내려앉으니 밸런싱에 주의합니다.'},
+  result:{title:'결과 해석', body:'큰 숫자가 이 시나리오의 수비 성공 확률입니다. "최대 가능"은 같은 상황에서 해당 스탯이 최고(100)일 때의 확률이고, "N% 수준"은 내 캐릭터가 그 최대치 대비 어느 정도 위치인지를 뜻합니다. 아래 그래프는 스탯이 오를수록 확률이 어떻게 변하는지(높을수록 체감하는 로그형 곡선)를 보여줍니다.'},
+};
+function renderSide(){
+  const side=document.getElementById('side'); if(!side) return;
+  const allChosen=ORDER.every(k=>sel[k]!=null);
+  const ctx = editing || (allChosen ? 'result' : ORDER.find(k=>sel[k]==null));
+  let html=`<div class="ex-block lead"><h4>${EXPLAIN.intro.title}</h4><p>${EXPLAIN.intro.body}</p></div>`;
+  const e=EXPLAIN[ctx];
+  if(e){
+    const src=e.src?`<span class="ex-src">기획 문서 기반</span>`:'';
+    html+=`<div class="ex-block"><h4>${e.title}${src?' '+src:''}</h4>`;
+    if(e.body) html+=`<p>${e.body}</p>`;
+    if(e.items) html+=e.items.map(it=>`<div class="ex-item"><div class="it">${it.t}</div><p>${it.b}</p></div>`).join('');
+    html+=`</div>`;
+  }
+  side.innerHTML=html;
+}
 
 function nrm(v,k){var x=(v-51)/49;if(x<0)x=0;else if(x>1)x=1;return k>0?Math.log(1+k*x)/Math.log(1+k):x;}
 function g(key,fb){return GC[key]!==undefined?GC[key]:fb;}
@@ -182,6 +230,7 @@ function render(){
   root.innerHTML=html;
   bindChooser();
   if(ORDER.every(k=>sel[k]!=null)) renderResult();   // 수정 중에도 결과창 유지
+  renderSide();                                      // 오른쪽 부연 설명 갱신
 }
 
 function summaryRow(key){
