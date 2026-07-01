@@ -79,6 +79,17 @@
     <span class="feature-go">시작하기 →</span>
   </a>
 
+  <a class="feature" href="doc_sampling.html" style="background:linear-gradient(180deg,rgba(52,211,153,0.09),rgba(52,211,153,0.03));border-color:rgba(52,211,153,0.28)">
+    <div class="feature-l">
+      <span class="feature-ic">📐</span>
+      <div>
+        <h3 style="display:flex;align-items:center;gap:10px">Sampling 시스템 기획서 <span class="feature-badge" style="color:var(--gn);background:rgba(52,211,153,0.10)">설계 문서</span></h3>
+        <p>계산기 뒤에 있는 판정 시스템 — 도형이 아니라 ‘시간 × 거리 창’으로 액션 성공을 판정하는 설계 의도·모델·튜닝을 정리한 기획 문서.</p>
+      </div>
+    </div>
+    <span class="feature-go" style="color:var(--gn)">문서 읽기 →</span>
+  </a>
+
   <div class="sec-title">개별 튜닝 대시보드 · 수비 (Defence)</div>
   <div class="grid">
     <a class="card" href="graph_defence.html">
@@ -115,11 +126,23 @@
       <p>골키퍼 슛 블록 반응시간·거리 감쇠와 시나리오별 캐칭 확률.</p>
       <span class="tag">GlobalConstGK</span>
     </a>
+    <a class="card" href="graph_gk_sampling.html">
+      <span class="ic">🥅</span>
+      <h3>GK 샘플링 시뮬레이터</h3>
+      <p>슛 궤적·GK 능력치를 조절해 GK가 샘플링(도달·터치)에 성공하는지 경기장 위에서 확인.</p>
+      <span class="tag">Sampling Sim</span>
+    </a>
     <a class="card" href="graph_pass.html">
       <span class="ic">⚽</span>
       <h3>Pass Simulation</h3>
       <p>패스 궤적·기준점·리시버 안전도와 각도/압박/원터치 정확도 모델.</p>
       <span class="tag">GlobalConstPass</span>
+    </a>
+    <a class="card" href="graph_passcut.html">
+      <span class="ic">✂️</span>
+      <h3>패스컷 샘플링 시뮬레이터</h3>
+      <p>패서→리시버 패스를 수비수가 샘플링해 끊을 수 있는지 경기장 위에서 판정. GK 샘플링과 동일 엔진.</p>
+      <span class="tag">Sampling Sim</span>
     </a>
     <a class="card" href="graph_run.html">
       <span class="ic">🏃</span>

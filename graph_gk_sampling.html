@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script src="assets/static-api.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GK 샘플링 시뮬레이터</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  :root{--bg:#09090b;--sf:#18181b;--sf2:#27272a;--bd:rgba(255,255,255,0.08);--bdh:rgba(255,255,255,0.16);--tx:#fafafa;--tx2:#a1a1aa;--tx3:#71717a;--ac:#818cf8;--acbg:rgba(129,140,248,0.12);--gn:#34d399;--yl:#fbbf24;--rd:#f87171;--pitch:#15391f}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;line-height:1.5}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:700} header h1 b{color:var(--ac)}
+  header a{color:var(--tx3);text-decoration:none;font-size:13px} header a:hover{color:var(--tx2)}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 80px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+  .intro{grid-column:1/-1;font-size:13px;color:var(--tx2);line-height:1.7;margin-bottom:2px}
+  .canvas-card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px;overflow:hidden}
+  .cap{font-size:12px;font-weight:700;color:var(--tx);margin:2px 2px 8px;display:flex;align-items:center;gap:8px}
+  .cap span{font-size:10px;font-weight:500;color:var(--tx3)}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;cursor:grab;touch-action:none}
+  canvas:active{cursor:grabbing}
+  .hint{font-size:11px;color:var(--tx3);margin-top:8px;text-align:center}
+  .hint b{color:var(--tx2)}
+  .playbar{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--sf2);color:var(--tx);cursor:pointer;font-family:inherit}
+  .btn:hover{border-color:var(--bdh)}
+  .btn.p{background:var(--ac);border-color:var(--ac);color:#fff}
+  /* side */
+  .side{position:sticky;top:18px;display:flex;flex-direction:column;gap:14px}
+  .verdict{border-radius:14px;padding:18px;border:1px solid var(--bd);text-align:center}
+  .verdict .v{font-size:30px;font-weight:800;line-height:1.1}
+  .verdict .vs{font-size:12px;margin-top:6px;opacity:.85}
+  .panel{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:16px}
+  .panel h3{font-size:12px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+  .kv{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--bd)}
+  .kv:last-child{border-bottom:none}
+  .kv span{color:var(--tx3)} .kv b{color:var(--tx);font-variant-numeric:tabular-nums}
+  .sl{margin-bottom:11px}
+  .sl-h{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+  .sl-h span{color:var(--tx2)} .sl-h b{color:var(--ac);font-variant-numeric:tabular-nums}
+  .sl-v{display:flex;align-items:center;gap:3px}
+  .sl-v input{width:50px;background:var(--bg);border:1px solid var(--bd);border-radius:5px;color:var(--ac);font-size:11px;font-weight:600;font-family:inherit;text-align:right;padding:1px 4px;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+  .sl-v input::-webkit-outer-spin-button,.sl-v input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .sl-v input:focus{outline:none;border-color:var(--ac);background:var(--sf2)}
+  .sl-v i{font-style:normal;font-size:10px;color:var(--tx3);min-width:22px}
+  .sl input[type=range]{width:100%;accent-color:var(--ac)}
+  .grp{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px}
+  .explain{margin-top:16px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:18px 20px}
+  .explain h2{font-size:15px;font-weight:700;color:var(--tx);margin-bottom:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .explain .src{font-size:9px;font-weight:600;color:var(--ac);background:var(--bg);border:1px solid var(--bd);padding:2px 7px;border-radius:5px}
+  .explain>p{font-size:12.5px;line-height:1.7;color:var(--tx2)}
+  .explain b{color:var(--tx)}
+  .ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:14px 0 4px}
+  .ex-col h3{font-size:12px;font-weight:700;color:var(--ac);margin-bottom:8px}
+  .ex-col ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  .ex-col li{font-size:12px;line-height:1.5;color:var(--tx2);padding-left:14px;position:relative}
+  .ex-col li::before{content:'·';position:absolute;left:3px;color:var(--tx3);font-weight:700}
+  .ex-col li.rule{margin-top:4px;padding:8px 10px;background:var(--acbg);border:1px solid rgba(129,140,248,0.25);border-radius:8px}
+  .ex-col li.rule::before{content:''}
+  .ex-foot{font-size:11px!important;color:var(--tx3)!important;margin-top:12px;padding-top:11px;border-top:1px solid var(--bd)}
+  @media(max-width:560px){.ex-grid{grid-template-columns:1fr}}
+  .policy{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .policy button{font-size:12px;font-weight:600;padding:8px 6px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx2);cursor:pointer;font-family:inherit;transition:all .12s}
+  .policy button:hover{border-color:var(--bdh);color:var(--tx)}
+  .policy button.on{background:var(--acbg);border-color:var(--ac);color:var(--tx)}
+  .policy-desc{font-size:11px;line-height:1.55;color:var(--tx3);margin-top:9px;padding-top:9px;border-top:1px solid var(--bd)}
+  .note{font-size:11px;line-height:1.6;color:var(--tx3);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px}
+  .note b{color:var(--tx2)} .note .src{font-size:9px;font-weight:600;color:var(--ac);background:var(--sf);border:1px solid var(--bd);padding:2px 6px;border-radius:5px;margin-left:4px}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr}.side{position:static}}
+</style>
+</head>
+<body>
+<header>
+  <h1>GK 샘플링 <b>시뮬레이터</b></h1>
+  <a href="index.html">← 대시보드</a>
+</header>
+<div class="wrap">
+  <div class="intro">
+    슛 궤적과 GK 능력치를 조절하면, GK가 <b style="color:var(--tx)">샘플링(시간 안에 볼 경로로 도달해 터치)</b>에 성공하는지 경기장 위에서 확인합니다.
+    공 높이는 골대보다 낮다고 가정한 평면(탑뷰) 모델입니다. 지도 위의 <b style="color:var(--tx)">점들을 드래그</b>해 위치를 바꿀 수 있어요.
+  </div>
+
+  <div class="main">
+    <div class="canvas-card">
+      <div class="cap">탑뷰 (위에서 본 경기장) <span>점을 드래그해 위치 조정</span></div>
+      <canvas id="cv" width="760" height="520"></canvas>
+      <div class="playbar">
+        <button class="btn p" id="play">▶ 시뮬레이션 재생</button>
+        <button class="btn" id="reset">위치 초기화</button>
+        <span class="hint" style="margin:0 0 0 6px"><b>주황</b> 슛 시작 · <b>노랑</b> 골라인 통과 지점 · <b>하늘</b> GK 시작</span>
+      </div>
+    </div>
+
+    <div class="canvas-card" style="margin-top:16px">
+      <div class="cap">골대 정면뷰 <span>페널티 에어리어 카메라 · 원근감</span></div>
+      <canvas id="cvF" width="760" height="420"></canvas>
+      <div class="hint">▶ 재생하면 GK가 <b>선회 → 이동 → 다이브</b> 하는 모습을 봅니다. 골라인에서 앞으로 나오면 커집니다(원근감).</div>
+      <div class="hint" style="margin-top:3px">키퍼 이미지: <b>assets/gk/</b> 에 <b>set.png · dive.png</b>(선택: move·catch) 를 넣으면 자동 사용 — 없으면 벡터로 표시. (dive는 오른쪽 다이브 1장, 왼쪽은 자동 반전)</div>
+    </div>
+
+    <div class="explain">
+      <h2>Sampling이란? <span class="src">기획 문서 기반</span></h2>
+      <p>보통의 게임은 ‘액션을 성공시키기 위한 범위’를 원·콘 같은 <b>도형</b>으로 정의한다. 우리 게임은 그렇게 하지 않는다.
+        어떤 볼의 터치(패스·슛·드리블 등)가 <b>예약</b>되어 있으면 <b>볼의 경로를 미리 알 수 있다.</b>
+        따라서 시작 시점(리시브 타겟이 됨 / 수동 수비 키 입력 / 슛으로 궤적 확정 등)부터 정해진
+        <b>Sampling 이동 시간·터치 시간·터치 Distance</b>를 이용해, 그 경로 위의 볼을 ‘잡을 수 있는가/없는가’를 판정한다.
+        즉 성공 판정의 본질은 도형이 아니라 <b>시간 × 거리 창(window)</b>이다.</p>
+
+      <div class="ex-grid">
+        <div class="ex-col">
+          <h3>이 시뮬레이터에서는</h3>
+          <ul>
+            <li><b style="color:#fb923c">슛</b> → <b style="color:#fbbf24">통과</b> 선 = 미리 아는 <b>예약된 볼 경로</b></li>
+            <li><b style="color:var(--gn)">초록 구간</b> = GK가 시간 안에 터치거리 이내로 <b>도달 가능한 지점들</b> · <b style="color:var(--rd)">빨강</b> = 불가</li>
+            <li>찍힌 점 = <b>선택한 기준</b>에 따라 GK가 실제로 잡는 지점(+ 터치 원)</li>
+            <li>GK는 가속도로 최고속도까지 가속하고, 방향전환엔 회전 시간이 든다</li>
+          </ul>
+        </div>
+        <div class="ex-col">
+          <h3>핵심 요소 + 판정</h3>
+          <ul>
+            <li><b>이동 시간</b> — 시작 시점부터 볼 경로로 이동하는 시간 창 (가속도·방향전환 포함)</li>
+            <li><b>모션 터치시간</b> — 모션 재생 → <b>Touch Notify</b>(실제 터치)까지 걸리는 시간. <b>Short 0.75 · Mid 0.85 · Long 0.90s</b>로 모션마다 다름 (UE5 애님 Notify)</li>
+            <li><b>터치 Distance</b> — 모션 사거리. 이 거리 이내로 들어오면 ‘터치 성립’ (Short 70·Mid 110·Long 160cm)</li>
+            <li><b>반응 시간 / 샘플링 시간</b> — 반응 지연 후 샘플링 시작. <b>샘플링 시간</b>은 최대 윈도우: 터치 시점이 이 시간을 <b>초과하면 실패</b> (그 이후 지점은 못 잡음)</li>
+            <li class="rule"><b>판정:</b> 어느 지점이든 <b>이동시간 + 모션 터치시간 + 반응 ≤ 볼 도달시간</b>이면 성공. "GK 도착 = 모션 재생 시점"</li>
+          </ul>
+        </div>
+      </div>
+      <p class="ex-foot">모션 재생도 시간을 먹기 때문에, <b>긴 모션(Long)일수록 멀리 닿지만 더 일찍 출발</b>해야 한다 — 그래서 GK는 <b>Short→Mid→Long 순</b>으로 되는 가장 작은 모션을 고른다.
+        값 출처: <b>GlobalConstGK.json</b>(gK_Sampling_Motion_*, NotAChance) · 로직 정리: <b>output/001_[플레이]/032_[Sampling 로직]</b>.</p>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="verdict" id="verdict"></div>
+    <div class="panel">
+      <h3>터치 지점 선택 기준</h3>
+      <div class="policy" id="policy"></div>
+      <div class="policy-desc" id="policy-desc"></div>
+    </div>
+    <div class="panel">
+      <h3>판정 내역</h3>
+      <div id="kvs"></div>
+    </div>
+    <div class="panel">
+      <h3>조절</h3>
+      <div class="grp">⚽ 슛 (볼)</div>
+      <div id="ball-sliders"></div>
+      <div class="grp" style="margin-top:6px">🧤 GK</div>
+      <div id="gk-sliders"></div>
+      <div class="grp" style="margin-top:6px">⏱ 샘플링 · 모션 시간</div>
+      <div id="samp-sliders"></div>
+    </div>
+    <div class="note">
+      <b>모델</b> <span class="src">GK Sampling 기획 + GlobalConstGK 기반</span><br>
+      미리 아는 볼 경로(예약 궤적) 위에서 GK가 어느 지점에 도달해 터치거리(Short/Mid/Long) 이내로 들어올 수 있는지 판정합니다.
+      핵심: <b>모션 재생도 시간을 먹습니다</b> — 모션 시작→Touch Notify까지 <b>모션 터치시간</b>(S 0.75·M 0.85·L 0.90s)이 걸리고,
+      "<b>GK 도착 시점 = 모션 재생 시점</b>"이라 <b>도달시간 + 모션 터치시간 + 반응시간 ≤ 볼 도달시간</b>이어야 잡습니다.
+      모션은 <b>Short→Mid→Long 순</b>으로 되는 가장 작은 것을 선택. <b>샘플링 시간</b>은 최대 윈도우라, 터치 시점이 이 시간을 초과하면 실패합니다(시간을 늘릴수록 더 늦은 지점까지 잡을 수 있음).
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 상태 (월드 좌표 단위 = m, 골라인 y=0, 필드는 y>0 방향) ──
+const W=760,H=520, GOAL_HALF=3.66, PBOX_HALF=20.16, PBOX_DEPTH=16.5, GAREA_HALF=9.16, GAREA_DEPTH=5.5;
+const state={
+  O:{x:-8, y:24},   // 슛 시작 (원거리)
+  C:{x:2.0, y:0},   // 골라인 통과 지점
+  G:{x:0, y:0.8},   // GK 시작
+  v0:16, drag:0.008,
+  gkMax:6.5, gkMin:0, gkAcc:15, gkTurn:360,
+  gkShort:70, gkMid:110, gkLong:160,   // 사거리(cm): Short→Mid→Long
+  touchShort:0.75, touchMid:0.85, touchLong:0.90,  // 모션 터치 시간(s): 모션 시작→Touch Notify
+  gkResponse:0.05, gkSampTime:2.0,     // 반응 시간 / 샘플링 시간(최대 윈도우: 이 시간 초과 터치는 실패)
+  policy:'margin',
+};
+// 터치 지점 선택 정책 (기준 자체엔 우열이 없는, 기획적 선택지)
+const POLICIES=[
+  {k:'earliest',  t:'가장 일찍',         d:'GK가 닿을 수 있는 가장 이른 지점(=골에서 가장 먼 곳)에서 차단. 공을 최대한 빨리 끊는 적극적 선택.'},
+  {k:'latest',    t:'가장 늦게',         d:'GK가 닿을 수 있는 가장 늦은 지점(=골에 가장 가까운 곳)까지 끌고 가서 터치.'},
+  {k:'margin',    t:'여유 최대',         d:'볼 도착보다 GK가 가장 많이 먼저 도달하는, 시간 여유가 가장 큰 안정적 지점.'},
+  {k:'motionpri', t:'최대 도달(모션)',   d:'GK가 가장 멀리 뻗어서(long 모션 우선) 잡는 지점. 기획서의 “모션 우선순위” 규칙을 단순 근사한 것.'},
+];
+const BALL_SLIDERS=[
+  {k:'v0',  label:'시작 속도', unit:'m/s', min:10,max:40,step:0.5},
+  {k:'drag',label:'공기저항(계수)', unit:'', min:0,max:0.03,step:0.001,fix:3},
+];
+const GK_SLIDERS=[
+  {k:'gkMax',  label:'최고 속도', unit:'m/s', min:3,max:9,step:0.1},
+  {k:'gkMin',  label:'최저 속도', unit:'m/s', min:0,max:4,step:0.1},
+  {k:'gkAcc',  label:'가속도', unit:'m/s²', min:4,max:25,step:0.5},
+  {k:'gkTurn', label:'방향전환 속도', unit:'°/s', min:90,max:720,step:10},
+  {k:'gkShort',label:'Short 사거리', unit:'cm', min:30,max:150,step:5},
+  {k:'gkMid',  label:'Mid 사거리',   unit:'cm', min:60,max:220,step:5},
+  {k:'gkLong', label:'Long 사거리',  unit:'cm', min:100,max:300,step:5},
+];
+const SAMP_SLIDERS=[
+  {k:'touchShort',label:'Short 모션 터치시간', unit:'s', min:0.1,max:3.0,step:0.01,fix:2},
+  {k:'touchMid',  label:'Mid 모션 터치시간',   unit:'s', min:0.1,max:3.0,step:0.01,fix:2},
+  {k:'touchLong', label:'Long 모션 터치시간',  unit:'s', min:0.1,max:3.0,step:0.01,fix:2},
+  {k:'gkResponse',label:'반응 시간',           unit:'s', min:0,max:1.0,step:0.01,fix:2},
+  {k:'gkSampTime',label:'샘플링 시간(최대 윈도우)', unit:'s', min:0.3,max:4.0,step:0.01,fix:2},
+];
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+// world↔screen
+const SCALE=15, OX=W/2, OY=70;  // y=0 (goal line) at screen y=70
+function sx(x){return OX + x*SCALE;}
+function sy(y){return OY + y*SCALE;}
+function wx(px){return (px-OX)/SCALE;}
+function wy(py){return (py-OY)/SCALE;}
+
+// ── 물리: 볼 궤적 샘플 ──
+function ballSamples(){
+  const O=state.O, C=state.C;
+  const dx=C.x-O.x, dy=C.y-O.y, L=Math.hypot(dx,dy)||0.001;
+  const ux=dx/L, uy=dy/L;
+  const dt=0.008; let v=state.v0, s=0, t=0;
+  const out=[{t:0, x:O.x, y:O.y, v}];
+  while(s<L && v>0.5 && t<5){
+    v -= state.drag*v*v*dt; if(v<0.5)v=0.5;
+    s += v*dt; t += dt;
+    const cl=Math.min(s,L);
+    out.push({t, x:O.x+ux*cl, y:O.y+uy*cl, v});
+    if(s>=L) break;
+  }
+  return {samples:out, L, arriveT:out[out.length-1].t};
+}
+// GK가 점 P에 (터치거리 이내) 도달하는 최소 시간
+function gkReachR(P,R){   // 사거리 R인 모션으로 P에 도달하는 최소 시간 (선회+이동)
+  const G=state.G;
+  const dvec={x:P.x-G.x, y:P.y-G.y};
+  const dist=Math.hypot(dvec.x,dvec.y);
+  const d=Math.max(0, dist-R);
+  const fvec={x:state.O.x-G.x, y:state.O.y-G.y};       // GK는 슛 시작(O) 방향을 봄
+  const fl=Math.hypot(fvec.x,fvec.y)||1, dl=dist||1;
+  let cos=(fvec.x*dvec.x+fvec.y*dvec.y)/(fl*dl); cos=Math.max(-1,Math.min(1,cos));
+  return Math.acos(cos)*180/Math.PI/Math.max(1,state.gkTurn) + timeToCover(d);
+}
+function gkReach(P){ return gkReachR(P, state.gkLong/100); }  // 전체 성공 판정은 최대(long) 사거리 기준
+function timeToCover(d){
+  if(d<=0) return 0;
+  const a=state.gkAcc, v0=state.gkMin, vmax=Math.max(state.gkMin+0.1,state.gkMax);
+  const ta=(vmax-v0)/a, da=v0*ta+0.5*a*ta*ta;
+  if(d<=da){ return (-v0+Math.sqrt(v0*v0+2*a*d))/a; }
+  return ta + (d-da)/vmax;
+}
+function distCovered(t){  // 시간 t 동안 이동 가능한 거리 (가속도 모델)
+  if(t<=0) return 0;
+  const a=state.gkAcc, v0=state.gkMin, vmax=Math.max(state.gkMin+0.1,state.gkMax);
+  const ta=(vmax-v0)/a;
+  if(t<=ta) return v0*t + 0.5*a*t*t;
+  return (v0*ta+0.5*a*ta*ta) + vmax*(t-ta);
+}
+// ── 샘플링 시간 모델 ──
+//  · 모션 재생도 시간을 먹는다: 모션 시작→Touch Notify 까지 touchShort/Mid/Long(s).
+//    "GK 도착 시점 = 모션 재생 시점"(기획) → 도달시간 + 모션 터치시간 + 반응 ≤ 볼 도달시간 이어야 잡는다.
+//  · 모션은 short → mid → long 순으로, 위 조건을 만족하는 가장 작은 것을 선택.
+//  · 샘플링 시간(최대 윈도우): 터치 시점(P.t)이 이 시간을 초과하면 실패. 늘릴수록 더 늦은 지점까지 잡을 수 있음.
+function reachMap(){ return {short:state.gkShort/100, mid:state.gkMid/100, long:state.gkLong/100}; }
+function motionMap(){ return {short:state.touchShort, mid:state.touchMid, long:state.touchLong}; }
+function gkBandAt(P){            // P를 시간 안에 터치할 수 있는 최소 모션(없으면 null)
+  if(P.t > state.gkSampTime + 1e-9) return null;         // 샘플링 시간 초과 → 잡을 수 없음
+  const R=reachMap(), M=motionMap();
+  for(const b of ['short','mid','long']){
+    if(gkReachR(P,R[b]) + M[b] + state.gkResponse <= P.t + 1e-4) return b;
+  }
+  return null;
+}
+function gkBestTouchTime(P){     // 어느 모션이든 가장 빠른 '터치 완료' 시간 (여유/근접 계산용)
+  const R=reachMap(), M=motionMap(); let best=Infinity;
+  for(const b of ['short','mid','long']) best=Math.min(best, gkReachR(P,R[b])+M[b]+state.gkResponse);
+  return best;
+}
+// 판정 — 모션 우선순위(short→mid→long)가 지점 선택 정책보다 먼저:
+//  그 모션으로 잡을 수 있는 지점이 하나라도 있으면 가장 작은 모션을 채택하고,
+//  그 다음 '터치 지점 기준' 정책으로 잡는 지점을 고른다. (기획: 통과 모션 중 최우선 동작 선택)
+function compute(){
+  const {samples, L, arriveT}=ballSamples();
+  const R=reachMap(), M=motionMap(), resp=state.gkResponse, sampT=state.gkSampTime;
+  const tof=(P,b)=>gkReachR(P,R[b])+M[b]+resp;                 // 이 모션으로 '터치 완료' 시간
+  const reachable=(P,b)=>tof(P,b)<=P.t+1e-4;                   // GK가 시간 안에 닿는가
+  const inWindow=P=>P.t<=sampT+1e-9;                           // 샘플링 시간 안인가
+  let band=null, pts=null;
+  for(const b of ['short','mid','long']){ const a=samples.filter(P=>inWindow(P)&&reachable(P,b)); if(a.length){band=b; pts=a; break;} }
+  const success=!!band;
+  // 도달 관점의 최근접(윈도우 무시) — 실패 표시·여유 계산용
+  let minGap=Infinity, closest=null, earliestReach=Infinity;
+  for(const P of samples){
+    const tt=gkBestTouchTime(P); const gap=tt-P.t;
+    if(gap<minGap){minGap=gap; closest=P;}
+    if(['short','mid','long'].some(b=>reachable(P,b))) earliestReach=Math.min(earliestReach,P.t);
+  }
+  let sel=null;
+  if(success){
+    switch(state.policy){
+      case 'latest':    sel=pts[pts.length-1]; break;                            // 가장 늦은(골에 가까운)
+      case 'margin':    sel=pts.reduce((a,b)=>(b.t-tof(b,band))>(a.t-tof(a,band))?b:a); break;  // 여유 최대
+      case 'motionpri': sel=pts.reduce((a,b)=>Math.hypot(b.x-state.G.x,b.y-state.G.y)>Math.hypot(a.x-state.G.x,a.y-state.G.y)?b:a); break; // 최대 도달
+      default:          sel=pts[0];                                              // earliest
+    }
+  }
+  // 잡을 수 있는 지점은 있으나 전부 샘플링 시간 밖 → '샘플링 시간 초과'
+  const windowMiss = !success && isFinite(earliestReach);
+  return {samples, L, arriveT, success,
+          interP: sel, interBand: band,
+          margin: sel? (sel.t - tof(sel,band)):null, minGap, closest, reachCount: success?pts.length:0,
+          windowMiss, earliestReach: isFinite(earliestReach)?earliestReach:null};
+}
+
+// ── 그리기 ──
+function drawPitch(){
+  ctx.fillStyle=getCss('--pitch'); ctx.fillRect(0,0,W,H);
+  // 잔디 줄무늬
+  ctx.fillStyle='rgba(255,255,255,0.02)';
+  for(let i=0;i<14;i++){ if(i%2) ctx.fillRect(0, sy(i*2), W, SCALE*2); }
+  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=2; ctx.fillStyle='rgba(255,255,255,0.45)';
+  // 골라인
+  line(sx(-25),sy(0),sx(25),sy(0));
+  // 페널티 박스
+  rect(sx(-PBOX_HALF),sy(0),(PBOX_HALF*2)*SCALE,PBOX_DEPTH*SCALE);
+  // 골에어리어
+  rect(sx(-GAREA_HALF),sy(0),(GAREA_HALF*2)*SCALE,GAREA_DEPTH*SCALE);
+  // 페널티 아크
+  ctx.beginPath(); ctx.arc(sx(0),sy(11),9.15*SCALE, Math.PI*0.18, Math.PI*0.82); ctx.stroke();
+  // 페널티 마크
+  dot(sx(0),sy(11),2,'rgba(255,255,255,0.45)');
+  // 골대 (골라인 위쪽 y<0 으로 표현)
+  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=3;
+  line(sx(-GOAL_HALF),sy(0),sx(-GOAL_HALF),sy(-1.6));
+  line(sx(GOAL_HALF),sy(0),sx(GOAL_HALF),sy(-1.6));
+  line(sx(-GOAL_HALF),sy(-1.6),sx(GOAL_HALF),sy(-1.6));
+  // 골문 음영
+  ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(sx(-GOAL_HALF),sy(-1.6),GOAL_HALF*2*SCALE,1.6*SCALE);
+}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v)||'#15391f';}
+function line(a,b,c,d){ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.stroke();}
+function rect(x,y,w,h){ctx.strokeRect(x,y,w,h);}
+function dot(x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=col;ctx.fill();}
+function handle(P,col,label){
+  const x=sx(P.x),y=sy(P.y);
+  ctx.beginPath();ctx.arc(x,y,12,0,7);ctx.fillStyle=col;ctx.fill();
+  ctx.lineWidth=2.5;ctx.strokeStyle='rgba(0,0,0,0.55)';ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='700 12px Inter';ctx.textAlign='center';ctx.fillText(label,x,y-18);
+}
+// 관절형 골키퍼(탑뷰): facing 방향, pose = idle/run/dive
+function keeperFacing(P){ return Math.atan2(state.O.y-P.y, state.O.x-P.x); } // 기본은 슈터를 바라봄
+function drawKeeper(P, facing, pose, glow){
+  const x=sx(P.x), y=sy(P.y);
+  ctx.save(); ctx.translate(x,y); ctx.rotate(facing);
+  // 그림자
+  ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(0,3,12,8,0,0,7); ctx.fill();
+  // 도달 강조 링(드래그/선택 표시)
+  if(glow){ ctx.strokeStyle='rgba(56,189,248,0.5)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,14,0,7); ctx.stroke(); }
+  // 팔 + 장갑
+  const ext = pose==='dive'? 19 : 10;
+  const spreadEnd = pose==='dive'? 3 : 8;
+  ctx.strokeStyle='#0d9488'; ctx.lineWidth=4.5; ctx.lineCap='round';
+  for(const s of [-1,1]){ ctx.beginPath(); ctx.moveTo(2, s*6); ctx.lineTo(ext, s*spreadEnd); ctx.stroke(); }
+  ctx.fillStyle='#fde047'; ctx.strokeStyle='#a16207'; ctx.lineWidth=1;
+  for(const s of [-1,1]){ ctx.beginPath(); ctx.arc(ext, s*spreadEnd, 3.4,0,7); ctx.fill(); ctx.stroke(); }
+  // 몸통 (키퍼 키트, facing 방향으로 길쭉)
+  ctx.fillStyle='#14b8a6'; ctx.strokeStyle='#0f766e'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.ellipse(0,0,10,7,0,0,7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.fillRect(-2.5,-7,5,14); // 등번호 스트라이프
+  // 머리(앞쪽)
+  ctx.fillStyle='#f1c27d'; ctx.strokeStyle='#7a4f1d'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(6,0,4,0,7); ctx.fill(); ctx.stroke();
+  // 코(방향 인디케이터)
+  ctx.fillStyle='#7a4f1d'; ctx.beginPath(); ctx.arc(9.5,0,1.3,0,7); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle='#e0f2fe'; ctx.font='700 11px Inter'; ctx.textAlign='center'; ctx.fillText('GK', x, y-17);
+}
+
+let anim=null;
+function render(res, animMode){
+  drawPitch();
+  // 궤적: 도달 가능 구간 초록 / 불가 빨강
+  const s=res.samples;
+  for(let i=1;i<s.length;i++){
+    const reachable = gkBandAt(s[i])!=null;
+    ctx.strokeStyle=reachable?'rgba(52,211,153,0.9)':'rgba(248,113,113,0.85)';
+    ctx.lineWidth=3; line(sx(s[i-1].x),sy(s[i-1].y),sx(s[i].x),sy(s[i].y));
+  }
+  // 도착 화살표 (방향)
+  // 인터셉트 지점 + 터치 원 + GK 경로
+  if(res.success && res.interP){
+    const P=res.interP;
+    ctx.strokeStyle='rgba(52,211,153,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+    line(sx(state.G.x),sy(state.G.y),sx(P.x),sy(P.y)); ctx.setLineDash([]);
+    const br=reachMap()[res.interBand||'long'];
+    ctx.beginPath();ctx.arc(sx(P.x),sy(P.y),br*SCALE,0,7);
+    ctx.strokeStyle='rgba(52,211,153,0.6)';ctx.lineWidth=1.5;ctx.stroke();
+    dot(sx(P.x),sy(P.y),5,'#34d399');
+    ctx.fillStyle='#34d399';ctx.font='700 11px Inter';ctx.textAlign='center';
+    ctx.fillText('터치 가능 ('+P.t.toFixed(2)+'s · '+(res.interBand||'')+')', sx(P.x), sy(P.y)+ (P.y<3?-12:20));
+  } else if(res.closest){
+    const P=res.closest;
+    dot(sx(P.x),sy(P.y),4,'#f87171');
+    ctx.beginPath();ctx.arc(sx(P.x),sy(P.y),state.gkLong/100*SCALE,0,7);
+    ctx.strokeStyle='rgba(248,113,113,0.4)';ctx.setLineDash([4,4]);ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
+  }
+  // 핸들
+  handle(state.O,'#fb923c','슛');
+  handle(state.C,'#fbbf24','통과');
+  if(!animMode) drawKeeper(state.G, keeperFacing(state.G), 'idle', true);
+}
+
+function fmt(n,d){return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d);}
+function update(){
+  const res=compute();
+  render(res);
+  renderFront(res);
+  // verdict
+  const v=document.getElementById('verdict');
+  if(res.success){
+    v.style.background='rgba(52,211,153,0.10)';v.style.borderColor='rgba(52,211,153,0.4)';
+    const mt=motionMap()[res.interBand];
+    v.innerHTML=`<div class="v" style="color:var(--gn)">샘플링 성공</div><div class="vs" style="color:var(--gn)">${res.interBand.toUpperCase()} 모션 · 여유 ${fmt(res.margin,2)}s</div>`;
+  }else if(res.windowMiss){
+    v.style.background='rgba(251,191,36,0.10)';v.style.borderColor='rgba(251,191,36,0.45)';
+    v.innerHTML=`<div class="v" style="color:var(--yl)">샘플링 시간 초과</div><div class="vs" style="color:var(--yl)">${fmt(res.earliestReach,2)}s에 터치 가능하나 한계 ${fmt(state.gkSampTime,2)}s 초과</div>`;
+  }else{
+    v.style.background='rgba(248,113,113,0.10)';v.style.borderColor='rgba(248,113,113,0.4)';
+    v.innerHTML=`<div class="v" style="color:var(--rd)">샘플링 실패</div><div class="vs" style="color:var(--rd)">${fmt(res.minGap,2)}s 부족 (모션 시간 포함)</div>`;
+  }
+  // kvs
+  const fl=Math.hypot(state.C.x-state.O.x,state.C.y-state.O.y);
+  const kv=[
+    ['비거리', fmt(fl,1)+' m'],
+    ['볼 골라인 도달', fmt(res.arriveT,2)+' s'],
+    ['통과 시 볼 속도', fmt(res.samples[res.samples.length-1].v,1)+' m/s'],
+    ['GK 도달 가능 한계', res.success?('인터셉트 '+fmt(res.interP.t,2)+'s'):('최소 '+fmt(res.minGap,2)+'s 부족')],
+    ['선택 모션', res.success? res.interBand.toUpperCase()+' ('+fmt(motionMap()[res.interBand],2)+'s)' : '—'],
+    ['GK 사거리 S/M/L', state.gkShort+'/'+state.gkMid+'/'+state.gkLong+' cm'],
+    ['모션 터치시간 S/M/L', fmt(state.touchShort,2)+'/'+fmt(state.touchMid,2)+'/'+fmt(state.touchLong,2)+' s'],
+    ['반응 / 샘플링 시간', fmt(state.gkResponse,2)+' / '+fmt(state.gkSampTime,2)+' s'],
+  ];
+  document.getElementById('kvs').innerHTML=kv.map(([k,val])=>`<div class="kv"><span>${k}</span><b>${val}</b></div>`).join('');
+  const pol=POLICIES.find(p=>p.k===state.policy);
+  document.getElementById('policy-desc').textContent=pol?pol.d:'';
+}
+
+// ───────── 정면뷰 (페널티 에어리어 카메라, 원근감) ─────────
+const cvF=document.getElementById('cvF'), ctxF=cvF.getContext('2d');
+const FW=760, FH=420, FCX=380, YMAX=16.5;
+const F_SCFAR=23, F_SCNEAR=46, F_GYFAR=130, F_GYNEAR=398;
+function fp(y){ const t=Math.max(0,Math.min(1,y/YMAX)); return Math.pow(t,0.78); }
+function fsc(y){ return F_SCFAR + fp(y)*(F_SCNEAR-F_SCFAR); }
+function fgyG(y){ return F_GYFAR + fp(y)*(F_GYNEAR-F_GYFAR); }
+function fpt(x,y,h){ const s=fsc(y); return {x:FCX + x*s, y:fgyG(y) - (h||0)*s, s}; }
+function flineF(x1,y1,x2,y2){ const a=fpt(x1,y1,0),b=fpt(x2,y2,0); ctxF.beginPath();ctxF.moveTo(a.x,a.y);ctxF.lineTo(b.x,b.y);ctxF.stroke(); }
+function drawGroundF(){
+  const g=ctxF.createLinearGradient(0,0,0,FH); g.addColorStop(0,'#0d2413'); g.addColorStop(1,'#173c20');
+  ctxF.fillStyle=g; ctxF.fillRect(0,0,FW,FH);
+  ctxF.strokeStyle='rgba(255,255,255,0.38)'; ctxF.lineWidth=2;
+  flineF(-30,0,30,0);                                            // 골라인
+  flineF(-PBOX_HALF,0,-PBOX_HALF,PBOX_DEPTH); flineF(PBOX_HALF,0,PBOX_HALF,PBOX_DEPTH);
+  flineF(-PBOX_HALF,PBOX_DEPTH,PBOX_HALF,PBOX_DEPTH);
+  flineF(-GAREA_HALF,0,-GAREA_HALF,GAREA_DEPTH); flineF(GAREA_HALF,0,GAREA_HALF,GAREA_DEPTH);
+  flineF(-GAREA_HALF,GAREA_DEPTH,GAREA_HALF,GAREA_DEPTH);
+}
+function drawGoalF(){
+  const s=fsc(0), HBAR=2.44, post=GOAL_HALF;
+  const lb=fpt(-post,0,0), rb=fpt(post,0,0), lt=fpt(-post,0,HBAR), rt=fpt(post,0,HBAR);
+  ctxF.fillStyle='rgba(255,255,255,0.05)'; ctxF.fillRect(lt.x,lt.y,rt.x-lt.x,lb.y-lt.y);
+  ctxF.strokeStyle='rgba(255,255,255,0.14)'; ctxF.lineWidth=1;
+  for(let i=1;i<11;i++){const xx=lt.x+(rt.x-lt.x)*i/11;ctxF.beginPath();ctxF.moveTo(xx,lt.y);ctxF.lineTo(xx,lb.y);ctxF.stroke();}
+  for(let j=1;j<6;j++){const yy=lt.y+(lb.y-lt.y)*j/6;ctxF.beginPath();ctxF.moveTo(lt.x,yy);ctxF.lineTo(rt.x,yy);ctxF.stroke();}
+  ctxF.strokeStyle='#f8fafc'; ctxF.lineWidth=Math.max(3,0.11*s); ctxF.lineCap='round';
+  ctxF.beginPath();ctxF.moveTo(lb.x,lb.y);ctxF.lineTo(lt.x,lt.y);ctxF.lineTo(rt.x,rt.y);ctxF.lineTo(rb.x,rb.y);ctxF.stroke();
+}
+function drawBallF(Bx,By,h){
+  const p=fpt(Bx,By,h), gnd=fpt(Bx,By,0), r=Math.max(2.2,0.12*p.s);
+  ctxF.fillStyle='rgba(0,0,0,0.32)';ctxF.beginPath();ctxF.ellipse(gnd.x,gnd.y,r,r*0.4,0,0,7);ctxF.fill();
+  ctxF.fillStyle='#fde047';ctxF.strokeStyle='#1a1a1a';ctxF.lineWidth=1.2;ctxF.beginPath();ctxF.arc(p.x,p.y,r,0,7);ctxF.fill();ctxF.stroke();
+}
+// 고정 비율 골격(정면, 오른쪽 기준). pelvis 원점, 단위 m, y는 위가 +.
+// Short=세트/준비, Mid=대각선 다이브, Long=완전 수평 다이브 (사거리 밴드)
+const GK_POSE={
+  set:{ anchor:'feet',
+    head:[0,0.80], neck:[0,0.57],
+    sL:[-0.21,0.53], eL:[-0.35,0.35], gL:[-0.42,0.17],
+    sR:[ 0.21,0.53], eR:[ 0.35,0.35], gR:[ 0.42,0.17],
+    hL:[-0.13,0.02], kL:[-0.24,-0.42], fL:[-0.31,-0.86],
+    hR:[ 0.13,0.02], kR:[ 0.24,-0.42], fR:[ 0.31,-0.86] },
+  short:{ anchor:'feet', glove:'gR',
+    head:[0.06,0.77], neck:[0.03,0.56],
+    sL:[-0.19,0.52], eL:[-0.31,0.37], gL:[-0.35,0.23],
+    sR:[ 0.24,0.52], eR:[ 0.47,0.51], gR:[ 0.68,0.47],
+    hL:[-0.13,0.02], kL:[-0.26,-0.40], fL:[-0.34,-0.82],
+    hR:[ 0.15,0.02], kR:[ 0.31,-0.40], fR:[ 0.45,-0.80] },
+  mid:{ anchor:'glove', glove:'gR',
+    head:[0.55,0.44], neck:[0.37,0.33],
+    sL:[0.23,0.33], eL:[0.35,0.19], gL:[0.47,0.11],
+    sR:[0.49,0.33], eR:[0.77,0.41], gR:[1.05,0.47],
+    hL:[-0.04,-0.02], kL:[-0.45,-0.12], fL:[-0.85,-0.22],
+    hR:[ 0.06, 0.06], kR:[-0.35, 0.06], fR:[-0.71, 0.04] },
+  long:{ anchor:'glove', glove:'gR',
+    head:[0.84,0.19], neck:[0.60,0.15],
+    sL:[0.46,0.17], eL:[0.80,0.08], gL:[1.12,0.03],
+    sR:[0.70,0.17], eR:[1.12,0.19], gR:[1.52,0.21],
+    hL:[-0.04,0.03], kL:[-0.52,0.05], fL:[-1.00,0.03],
+    hR:[ 0.06,0.10], kR:[-0.47,0.14], fR:[-0.96,0.17] }
+};
+const POSE_KEYS=['head','neck','sL','eL','gL','sR','eR','gR','hL','kL','fL','hR','kR','fR'];
+function gkPelvis(P,Gx,Gy,ballWX,ballWY,flip,s){          // 포즈의 골반 월드좌표
+  if(P.anchor==='glove' && P.glove && ballWX!=null){
+    const bp=fpt(ballWX,ballWY,0.38), gv=P[P.glove];
+    return {x:bp.x - flip*gv[0]*s, y:bp.y + gv[1]*s};     // 장갑이 볼에 닿게
+  }
+  const base=fpt(Gx,Gy,0), fy=Math.min(P.fL[1],P.fR[1]);
+  return {x:base.x, y:base.y + fy*s};                     // 발이 지면에 닿게
+}
+function lerpPose(A,B,p){                                 // 두 포즈를 p(0~1)로 보간
+  const o={anchor:B.anchor, glove:B.glove};
+  for(const k of POSE_KEYS) o[k]=[A[k][0]+(B[k][0]-A[k][0])*p, A[k][1]+(B[k][1]-A[k][1])*p];
+  return o;
+}
+function drawGKFront(Gx,Gy,pose,faceDir,ballWX,ballWY){
+  const P=GK_POSE[pose]||GK_POSE.set, s=fsc(Gy), flip=(faceDir<0)?-1:1;
+  const pv=gkPelvis(P,Gx,Gy,ballWX,ballWY,flip,s);
+  drawSkeleton(P, pv.x, pv.y, s, flip);
+}
+// 다이브 펼침: set 포즈 → 밴드 포즈로 progress(0~1) 보간 (모션 재생 시간을 화면에 표현)
+function drawGKDive(Gx,Gy,band,faceDir,ballWX,ballWY,p){
+  const s=fsc(Gy), flip=(faceDir<0)?-1:1, A=GK_POSE.set, B=GK_POSE[band]||GK_POSE.long;
+  const pa=gkPelvis(A,Gx,Gy,ballWX,ballWY,flip,s), pb=gkPelvis(B,Gx,Gy,ballWX,ballWY,flip,s);
+  drawSkeleton(lerpPose(A,B,p), pa.x+(pb.x-pa.x)*p, pa.y+(pb.y-pa.y)*p, s, flip);
+}
+function drawSkeleton(P, ox, oy, s, flip){
+  const L=j=>({x:ox+flip*j[0]*s, y:oy - j[1]*s}), pel={x:ox,y:oy};
+  const fmid={x:(L(P.fL).x+L(P.fR).x)/2, y:Math.max(L(P.fL).y,L(P.fR).y)};
+  ctxF.fillStyle='rgba(0,0,0,0.25)';ctxF.beginPath();ctxF.ellipse(fmid.x,fmid.y,0.5*s,0.15*s,0,0,7);ctxF.fill();
+  ctxF.lineCap='round';ctxF.lineJoin='round';
+  const bone=(a,b,w,col)=>{ctxF.strokeStyle=col;ctxF.lineWidth=Math.max(2.5,w*s);ctxF.beginPath();ctxF.moveTo(a.x,a.y);ctxF.lineTo(b.x,b.y);ctxF.stroke();};
+  bone(L(P.hL),L(P.kL),0.13,'#0f766e'); bone(L(P.kL),L(P.fL),0.12,'#0f766e');   // 다리
+  bone(L(P.hR),L(P.kR),0.13,'#0f766e'); bone(L(P.kR),L(P.fR),0.12,'#0f766e');
+  bone(L(P.hL),L(P.hR),0.15,'#14b8a6'); bone(pel,L(P.neck),0.34,'#14b8a6'); bone(L(P.sL),L(P.sR),0.15,'#14b8a6'); // 몸통
+  bone(L(P.sL),L(P.eL),0.12,'#0d9488'); bone(L(P.eL),L(P.gL),0.11,'#0d9488'); // 팔
+  bone(L(P.sR),L(P.eR),0.12,'#0d9488'); bone(L(P.eR),L(P.gR),0.11,'#0d9488');
+  ctxF.fillStyle='#fde047';ctxF.strokeStyle='#a16207';ctxF.lineWidth=1;       // 장갑
+  for(const g of [L(P.gL),L(P.gR)]){ctxF.beginPath();ctxF.arc(g.x,g.y,Math.max(2.6,0.095*s),0,7);ctxF.fill();ctxF.stroke();}
+  const h=L(P.head); ctxF.fillStyle='#f1c27d';ctxF.strokeStyle='#7a4f1d';ctxF.lineWidth=1; // 머리
+  ctxF.beginPath();ctxF.arc(h.x,h.y,0.15*s,0,7);ctxF.fill();ctxF.stroke();
+}
+// ── 키퍼 스프라이트(이미지) — 있으면 이미지, 없으면 위 벡터로 자동 폴백 ──
+const GK_SPRITES={ set:'assets/gk/set.png', move:'assets/gk/move.png', dive:'assets/gk/dive.png', catch:'assets/gk/catch.png' };
+const gkImg={};
+(function loadGKSprites(){
+  Object.entries(GK_SPRITES).forEach(([k,src])=>{ const im=new Image();
+    im.onload=()=>{ gkImg[k]=im; if(typeof update==='function') update(); };
+    im.onerror=()=>{}; im.src=src; });
+})();
+function drawGKImg(Gx,Gy,pose,faceDir,ballWX,ballWY){
+  const diving = (pose==='short'||pose==='mid'||pose==='long'||pose==='dive');
+  let im=null;
+  if(!diving) im = gkImg.set;
+  else if(pose==='short') im = gkImg.move||gkImg.set;
+  else im = (pose==='long'&&gkImg.catch)?gkImg.catch : (gkImg.dive||gkImg.catch||gkImg.set);
+  if(!im) return false;                                  // 이미지 없음 → 벡터 폴백
+  const base=fpt(Gx,Gy,0), s=fsc(Gy);
+  const ballPt = ballWX!=null? fpt(ballWX,ballWY,0.38):null;
+  const isDive = diving && im!==gkImg.set;
+  ctxF.save();
+  if(isDive){
+    const c = ballPt? {x:(base.x+ballPt.x)/2, y:(base.y+ballPt.y)/2 - 0.15*s} : base;
+    const h=1.55*s, w=h*(im.width/im.height);
+    ctxF.translate(c.x,c.y);
+    if(ballPt && ballPt.x<base.x) ctxF.scale(-1,1);      // 볼이 왼쪽이면 좌우 반전(원본=오른쪽 다이브)
+    ctxF.drawImage(im, -w*0.5, -h*0.6, w, h);
+  } else {
+    const h=1.95*s, w=h*(im.width/im.height);
+    ctxF.translate(base.x,base.y);
+    if(pose==='move' && ballPt && ballPt.x<base.x) ctxF.scale(-1,1);
+    ctxF.drawImage(im, -w*0.5, -h, w, h);               // 발이 base에 닿게
+  }
+  ctxF.restore();
+  return true;
+}
+function renderFront(res, animMode){
+  drawGroundF();
+  drawGoalF();
+  // 골라인 통과 지점 표시
+  const c=fpt(state.C.x,0,0); ctxF.fillStyle='rgba(251,191,36,0.9)';
+  ctxF.beginPath();ctxF.arc(c.x,c.y,4,0,7);ctxF.fill();
+  if(!animMode){ if(!drawGKImg(state.G.x,state.G.y,'set',0,null,null)) drawGKFront(state.G.x,state.G.y,'set',0,null,null); }
+}
+
+// 슬라이더 빌드
+function buildSliders(){
+  const mk=(host,defs)=>{host.innerHTML=defs.map(d=>`<div class="sl"><div class="sl-h"><span>${d.label}</span><span class="sl-v"><input type="number" id="nv-${d.k}" min="${d.min}" max="${d.max}" step="${d.step}" value="${d.fix?(+state[d.k]).toFixed(d.fix):state[d.k]}">${d.unit?'<i>'+d.unit+'</i>':''}</span></div><input type="range" id="s-${d.k}" min="${d.min}" max="${d.max}" step="${d.step}" value="${state[d.k]}"></div>`).join('');
+    defs.forEach(d=>{
+      const sl=document.getElementById('s-'+d.k), nv=document.getElementById('nv-'+d.k);
+      sl.oninput=()=>{state[d.k]=parseFloat(sl.value); nv.value=(d.fix?(+state[d.k]).toFixed(d.fix):state[d.k]); update();};
+      nv.oninput=()=>{let v=parseFloat(nv.value); if(isNaN(v))return; v=Math.max(d.min,Math.min(d.max,v)); state[d.k]=v; sl.value=v; update();};
+      nv.onchange=()=>{let v=parseFloat(nv.value); if(isNaN(v))v=d.min; v=Math.max(d.min,Math.min(d.max,v)); if(d.fix)v=+v.toFixed(d.fix); nv.value=v; sl.value=v; state[d.k]=v; update();};
+    });};
+  mk(document.getElementById('ball-sliders'),BALL_SLIDERS);
+  mk(document.getElementById('gk-sliders'),GK_SLIDERS);
+  mk(document.getElementById('samp-sliders'),SAMP_SLIDERS);
+}
+function buildPolicy(){
+  const host=document.getElementById('policy');
+  host.innerHTML=POLICIES.map(p=>`<button data-k="${p.k}" class="${p.k===state.policy?'on':''}">${p.t}</button>`).join('');
+  host.querySelectorAll('button').forEach(b=>{b.onclick=()=>{state.policy=b.dataset.k;
+    host.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.k===state.policy));update();};});
+}
+
+// ── 드래그 ──
+let drag=null;
+function evtPos(e){const r=cv.getBoundingClientRect();const px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;const py=(e.touches?e.touches[0].clientY:e.clientY)-r.top;return {px:px*(W/r.width), py:py*(H/r.height)};}
+function pick(px,py){
+  for(const k of ['O','C','G']){const P=state[k];if(Math.hypot(px-sx(P.x),py-sy(P.y))<22)return k;}
+  return null;
+}
+function onDown(e){const {px,py}=evtPos(e);drag=pick(px,py);if(drag)e.preventDefault();}
+function onMove(e){
+  if(!drag)return; e.preventDefault();
+  const {px,py}=evtPos(e); let x=wx(px), y=wy(py);
+  if(drag==='C'){ y=0; x=Math.max(-12,Math.min(12,x)); }            // 골라인 위
+  else if(drag==='G'){ y=Math.max(-1.0,Math.min(10,y)); x=Math.max(-22,Math.min(22,x)); }
+  else { y=Math.max(0.5,Math.min(28,y)); x=Math.max(-24,Math.min(24,x)); }
+  state[drag]={x,y}; update();
+}
+function onUp(){drag=null;}
+cv.addEventListener('mousedown',onDown);window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onUp);
+cv.addEventListener('touchstart',onDown,{passive:false});window.addEventListener('touchmove',onMove,{passive:false});window.addEventListener('touchend',onUp);
+
+// ── 재생 애니메이션 ──
+document.getElementById('play').onclick=()=>{
+  if(anim){cancelAnimationFrame(anim);anim=null;}
+  const res=compute(); const s=res.samples; const total=res.arriveT;
+  const G={x:state.G.x,y:state.G.y};
+  // 밴드/지점은 compute()와 동일하게 (short→mid→long, 모션·반응 시간 포함)
+  const band=res.success? res.interBand : 'long';
+  const target=res.success? res.interP : (res.closest||state.C);
+  const reach=reachMap()[band], motionT=motionMap()[band], resp=state.gkResponse;
+  const dist=Math.hypot(target.x-G.x, target.y-G.y);
+  const ux=(target.x-G.x)/(dist||1), uy=(target.y-G.y)/(dist||1);
+  const initF=keeperFacing(G), tgtF=Math.atan2(target.y-G.y, target.x-G.x);
+  let dF=tgtF-initF; while(dF>Math.PI)dF-=2*Math.PI; while(dF<-Math.PI)dF+=2*Math.PI;
+  const turnTime=Math.abs(dF)*180/Math.PI/Math.max(1,state.gkTurn);
+  const touchT=res.success? target.t : total;
+  const rr=Math.min(reach,dist);
+  const body={x:target.x-ux*rr, y:target.y-uy*rr};
+  const travelTime=timeToCover(Math.max(0,dist-rr));
+  const reactEnd=resp;                         // 반응 지연
+  const turnEnd=reactEnd+turnTime;             // 선회 완료
+  const gkArrive=turnEnd+travelTime;           // 목표지점 도착
+  const motionStart=res.success? Math.max(gkArrive, touchT-motionT) : gkArrive;  // 모션 재생 시작(터치=touchT)
+  const travelDist=Math.max(0.0001, dist-rr);
+  const diveDir=(target.x>=G.x)?1:-1;
+  const endT=Math.max(touchT, motionStart+motionT)+0.8;   // 다이브가 끝까지 펼쳐지도록
+  let t0=null;
+  function step(ts){
+    if(t0===null)t0=ts; const t=(ts-t0)/1000;
+    // 볼 (성공해서 잡으면 인터셉트 지점에서 멈춤)
+    let bi=s.findIndex(p=>p.t>=t); if(bi<0)bi=s.length-1; let B=s[bi];
+    const caught = res.success && t>=touchT;
+    if(caught) B=target;
+    // GK 상태 (선회 → 이동 → 모션[short/mid/long])
+    let gx,gy,gf,poseName,drawDepth;
+    if(t<reactEnd){ gx=G.x; gy=G.y; gf=initF; poseName='set'; drawDepth=G.y; }                       // 반응 대기
+    else if(t<turnEnd){ gx=G.x; gy=G.y; gf=initF+dF*((t-reactEnd)/Math.max(0.001,turnTime)); poseName='set'; drawDepth=G.y; }  // 선회
+    else if(t<gkArrive){ const f=Math.min(1, distCovered(t-turnEnd)/travelDist); gx=G.x+(body.x-G.x)*f; gy=G.y+(body.y-G.y)*f; gf=tgtF; poseName='set'; drawDepth=gy; }  // 이동(가속도)
+    else if(t<motionStart){ gx=body.x; gy=body.y; gf=tgtF; poseName='set'; drawDepth=body.y; }        // 모션 대기
+    else { gx=body.x; gy=body.y; gf=tgtF; poseName=band; drawDepth=target.y; }                        // 모션 재생(터치)
+    const diveProg = (poseName==='set')?0 : Math.max(0,Math.min(1,(t-motionStart)/Math.max(0.001,motionT)));  // 모션 펼침 진행도
+    const fdir=(poseName==='set')?1:diveDir;
+    // 탑뷰
+    render(res,true);
+    dot(sx(B.x),sy(B.y),6,'#fde047'); ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(sx(B.x),sy(B.y),6,0,7);ctx.stroke();
+    drawKeeper({x:gx,y:gy}, gf, poseName==='set'?'idle':'dive', false);
+    // 정면뷰
+    renderFront(res,true);
+    if(B.y<=YMAX+1) drawBallF(B.x,B.y,0.38);
+    // 장갑 고정점: 성공이면 공(잡으면 멈춤), 실패면 키퍼가 노린 지점(target)에 고정 → 공에 끌려가지 않음
+    const gbX=res.success?B.x:target.x, gbY=res.success?B.y:target.y;
+    if(poseName==='set'){
+      if(!drawGKImg(gx,drawDepth,'set',fdir,gbX,gbY)) drawGKFront(gx,drawDepth,'set',fdir,gbX,gbY);
+    } else {
+      drawGKDive(gx,drawDepth,poseName,fdir,gbX,gbY,diveProg);   // set→밴드 펼침(모션 시간 표현)
+    }
+    if(caught){ const tp=fpt(B.x,B.y,0.38); ctxF.strokeStyle='#34d399';ctxF.lineWidth=2.5;ctxF.beginPath();ctxF.arc(tp.x,tp.y,Math.max(7,fsc(B.y)*0.4),0,7);ctxF.stroke();
+      ctxF.fillStyle='#34d399';ctxF.font='700 13px Inter';ctxF.textAlign='center';ctxF.fillText('캐치!', tp.x, tp.y-Math.max(12,fsc(B.y)*0.5)); }
+    if(t<endT){anim=requestAnimationFrame(step);}
+    else {anim=null; update();}
+  }
+  anim=requestAnimationFrame(step);
+};
+document.getElementById('reset').onclick=()=>{state.O={x:-8,y:24};state.C={x:2.0,y:0};state.G={x:0,y:0.8};update();};
+
+buildSliders();
+buildPolicy();
+update();
+</script>
+</body>
+</html>
